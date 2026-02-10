@@ -28,6 +28,9 @@ export const config = {
   },
   sync: {
     intervalMinutes: parseInt(process.env.SYNC_INTERVAL_MINUTES || '5', 10),
+    startDate: process.env.SYNC_START_DATE
+      ? new Date(process.env.SYNC_START_DATE)
+      : null,
     excludedSalesrepIds: process.env.EXCLUDED_SALESREP_IDS
       ? process.env.EXCLUDED_SALESREP_IDS.split(',').map(id => id.trim()).filter(Boolean)
       : [],

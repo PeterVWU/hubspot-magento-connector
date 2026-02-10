@@ -1,4 +1,5 @@
 import pool from './index.js';
+import { config } from '../config/index.js';
 import logger from '../utils/logger.js';
 
 export async function runMigrations() {
@@ -59,6 +60,17 @@ export async function runMigrations() {
       INSERT INTO sync_state (entity_type) VALUES ('customer'), ('product'), ('order')
         ON CONFLICT (entity_type) DO NOTHING;
     `);
+
+    // If SYNC_START_DATE is set, update any sync_state rows still at epoch
+    if (config.sync.startDate) {
+      await client.query(
+        `UPDATE sync_state SET last_synced_at = $1
+         WHERE last_synced_at = '1970-01-01T00:00:00Z'`,
+        [config.sync.startDate],
+      );
+      logger.info('Set initial sync start date', { startDate: config.sync.startDate.toISOString() });
+    }
+
     logger.info('Database migrations completed');
   } finally {
     client.release();

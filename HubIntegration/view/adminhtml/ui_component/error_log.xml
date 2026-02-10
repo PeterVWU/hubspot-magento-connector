@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+-->
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">error_log.makewebbetter_hub_error_log_data_source</item>
+        </item>
+    </argument>
+    <settings>
+        <spinner>error_log_columns</spinner>
+        <deps>
+            <dep>error_log.makewebbetter_hub_error_log_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="makewebbetter_hub_error_log_data_source" component="Magento_Ui/js/grid/provider">
+        <settings>
+            <updateUrl path="mui/index/render"/>
+            <storageConfig>
+                <param name="indexField" xsi:type="string">id</param>
+            </storageConfig>
+        </settings>
+        <aclResource>Makewebbetter_HubIntegration::hub_error_log</aclResource>
+        <dataProvider class="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider" name="makewebbetter_hub_error_log_data_source">
+            <settings>
+                <requestFieldName>id</requestFieldName>
+                <primaryFieldName>main_table.id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <exportButton name="export_button"/>
+        <filters name="listing_filters"/>
+        <massaction name="listing_massaction" component="Magento_Ui/js/grid/tree-massactions">
+            <action name="delete">
+                <settings>
+                    <url path="hubintegration/errorLog/massDelete"/>
+                    <type>delete</type>
+                    <label translate="true">Delete</label>
+                    <confirm>
+                        <message translate="true">Are you sure you want to delete selected items?</message>
+                        <title translate="true">Delete items</title>
+                    </confirm>
+                </settings>
+            </action>
+        </massaction>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+    <columns name="error_log_columns">
+        <settings>
+            <childDefaults>
+                <param name="fieldAction" xsi:type="array">
+                    <item name="provider" xsi:type="string">error_log.error_log.error_log_columns.actions</item>
+                    <item name="target" xsi:type="string">applyAction</item>
+                    <item name="params" xsi:type="array">
+                        <item name="0" xsi:type="string">view</item>
+                        <item name="1" xsi:type="string">${ $.$data.rowIndex }</item>
+                    </item>
+                </param>
+            </childDefaults>
+        </settings>
+        <selectionsColumn name="ids">
+            <settings>
+                <indexField>id</indexField>
+            </settings>
+        </selectionsColumn>
+        <column name="created_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Log Created At</label>
+                <sorting>desc</sorting>
+            </settings>
+        </column>
+        <column name="request_url">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Request Url</label>
+            </settings>
+        </column>
+        <column name="request_type" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Makewebbetter\HubIntegration\Model\Source\RequestType"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Request Type</label>
+            </settings>
+        </column>
+        <column name="request_params">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Request Param(s)</label>
+            </settings>
+        </column>
+        <column name="response_code">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Response Code</label>
+            </settings>
+        </column>
+        <column name="response">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Response</label>
+            </settings>
+        </column>
+    </columns>
+</listing>

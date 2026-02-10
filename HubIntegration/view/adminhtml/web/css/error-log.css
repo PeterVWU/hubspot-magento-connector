@@ -1,0 +1,39 @@
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+.makewebbetter-hub-pager-container {
+    width: 100%;
+    clear: both;
+}
+#hubSpotErrorLogGrig {
+    clear: both;
+}
+.makewebbetter-hub-pager-wrapper {
+    width: 30%;
+    float: left;
+}
+.get-hubspot-error-button-wrapper {
+    float: right;
+}
+.makewebbetter-hubspot-error-log-container .admin__field.field.col-sm-3 {
+    margin-top: 0px;
+    margin-bottom: 10px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+.makewebbetter-hubspot-error-log-container .addafter .note small{
+    font-size: 10px;
+}

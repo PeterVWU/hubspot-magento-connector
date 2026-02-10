@@ -1,0 +1,163 @@
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+.steps-wrap {
+    display: flex;
+    justify-content: center;
+}
+.steps-inner {
+    display: -webkit-box;
+    display: flex;
+    width: calc(100% - 200px);
+    padding: 0 0 2rem 0;
+    list-style: none;
+    justify-content: center;
+}
+
+.step {
+    flex: auto;
+    position: relative;
+    margin-right: 30px;
+}
+.step:last-child {
+    flex: unset;
+}
+.step:not(:last-child):before,
+.step:not(:last-child):after {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 30px;;
+    height: 5px;
+    content: "";
+    -webkit-transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+.step:before {
+    width: 100%;
+    background-color: #c8c1c1;
+}
+.step:after {
+    width: 0;
+    background-color: #f46f25;
+}
+.step-active.processing:after {
+    width: var(--progress-width) !important;
+}
+.step-complete:after {
+    width: 100% !important;
+}
+.step-complete:after, .step-active.processing:after{
+    opacity: 1;
+    -webkit-transition: width 0.6s ease-in-out, opacity 0.6s ease-in-out;
+    transition: width 0.6s ease-in-out, opacity 0.6s ease-in-out;
+}
+
+.step-icon {
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    justify-content: center;
+    position: relative;
+    width: 30px;
+    height: 30px;
+    background-color: #292627;
+    border: 3px solid #e6e7e8;
+    border-radius: 50%;
+    color: transparent;
+    font-size: 2rem;
+    z-index: 9;
+}
+.step.step-undone .step-icon span {
+    color: #fff;
+    font-size: 15px;
+}
+.step-active.step-complete .step-icon > span{
+    display:none;
+}
+.step-complete.step-active .step-icon:before {
+    display: block;
+    color: #fff;
+    content: "\2713";
+}
+.step-complete.step-active .step-icon.start-icon:before{
+    display: none;
+}
+.step-complete.step-active .step-icon {
+    -webkit-transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
+    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+.step-undone.step-active .step-icon {
+    border-color: #f46f25;
+    -webkit-transition-delay: 0.5s;
+    transition-delay: 0.5s;
+}
+.step-complete .step-icon {
+    -webkit-animation: bounce 0.5s ease-in-out;
+    animation: bounce 0.5s ease-in-out;
+    background-color: #f46f25;
+    border-color: #f46f25;
+    color: #fff;
+}
+
+.step-label {
+    position: absolute;
+    bottom: -2rem;
+    margin-top: 1rem;
+    font-size: 14px;
+    text-transform: capitalize;
+    -webkit-transform: translateX(-20%);
+    transform: translateX(-20%);
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+.step-undone.step-inactive .step-label {
+    color: #666;
+}
+.step-undone.step-active .step-label {
+    color: #000;
+    font-weight: 700;
+}
+.step-active .step-label {
+    -webkit-transition: color 0.3s ease-in-out;
+    transition: color 0.3s ease-in-out;
+    -webkit-transition-delay: 0.5s;
+    transition-delay: 0.5s;
+}
+
+/* Authentication Process */
+.hubintegration-config-getcode .card {
+    display: inline-block;
+    width: 50%;
+    margin-left: 25%;
+}
+.hubintegration-config-getcode .installation-instruction {
+    padding-top: 20px;
+    text-align: center;
+}
+.re-export-data{
+    background-color: #eb5202 !important;
+    border-color: #eb5202 !important;
+    color: #fff !important;
+    font-size: initial;
+    padding: 15px;
+}
+.re-export-data:hover{
+    background-color: #ba4000 !important;
+}
+/* Authentication Process */

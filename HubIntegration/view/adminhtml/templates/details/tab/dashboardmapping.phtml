@@ -1,0 +1,252 @@
+<?php
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+?>
+<?php
+/** @var  $block \Makewebbetter\HubIntegration\Block\Adminhtml\Details\Details\Tabs\Dashboardmapping */
+$formAction = $block->getAdminBaseUrl().'/hubintegration/config/mappingsaved';
+$status = $block->getConnectionStatus();
+$hubSpotVersion = 'V-'.$block->getHubintegrationVersion().'-p2';
+
+if($status){
+    $block->setHubPipelineAndStageDetails();
+    $dealPipelinesresponse = $block->getHubPipelineDetails();
+    $hubPipelineDetails = [];
+    if(!empty($dealPipelinesresponse) && isset($dealPipelinesresponse['results'])){
+        $hubPipelineDetails = $dealPipelinesresponse['results'];
+    }
+    $pipelines = [];
+    $pipelines = json_decode($block->connectionManager->getHubConfig('hub_all_pipeline_id'), true);
+    $pipelinesWithStages = [];
+    $allpipelineDetails = json_decode($block->connectionManager->getHubConfig('hub_all_pipeline_detail'), true);
+    $userData = json_decode($block->connectionManager->getHubConfig( 'hub_user_raw_deal_stage_mapped'), true);
+    $userStageData = [];
+    $defaultStage = [];
+    $showPipeline = '';
+    $userPipeline = $block->connectionManager->getHubConfig( 'hub_user_selected_pipeline');
+
+    $defaultStageCheck = json_decode($block->connectionManager->getHubConfig( 'hub_ecomm_default_mapping'), true);;
+
+    if(!empty($userPipeline)){
+        $showPipeline = $userPipeline;
+    }else{
+        $showPipeline = 'Ecommerce Pipeline';
+    }
+    if(!empty($userData)) {
+        foreach ($userData as $key => $value) {
+            if ($key == $showPipeline)
+                foreach ($value as $skey => $svalue) {
+                    $userStageData[$svalue['magento_order_status_code']] = $svalue['hubspot_deal_stage_id'];
+                }
+        }
+    }
+    foreach ($allpipelineDetails as $pkey => $pipeline) {
+        if ($pkey == $showPipeline) {
+            foreach ($pipeline as $skey => $stage) {
+                $defaultStage[$skey] = $stage;
+            }
+        }
+    }
+
+    foreach($hubPipelineDetails as $pipeline){
+        $pipelines[$pipeline['id']] = $pipeline['label'];
+        foreach($pipeline['stages'] as $key => $stage){
+            $pipelinesWithStages[$pipeline['label']][$stage['id']] = $stage['label'];
+        }
+    }
+    $magentoOrderStatus =  $block->connectionManager->getmagentoOrderStatus();
+
+}
+
+?>
+
+
+<section class="admin__page-section" id="hub-dashboard-mapping">
+    <div class="admin__page-section-title hubDashboard_content">
+        <span class="title"><?= /* @noEscape */ $block->getTabTitle() ?></span>
+        <span class="ver"><?= $block->escapeHtml(__($hubSpotVersion)) ?></span>
+    </div>
+    <div class="row">
+        <?php if ($status) { ?>
+        <div class="pipeline-stage-mapping">
+            <h2 class="title">Pipeline and Deal Stages Mapping</h2>
+            <form action ="<?= /* @noEscape */ $formAction ?>" method="post" id="mapping_form">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <label for"pipeline"><h3>Select Pipeline </h3></label>
+                            </td>
+                            <td>
+                                <select name="selected_pipeline" id="selected_pipeline">
+                                    <?php foreach($pipelines as $id => $pipeline){
+                                        if($pipeline == $showPipeline){
+                                            ?>
+                                            <option selected="<?= /* @noEscape */ $pipeline ?>" name="<?= /* @noEscape */ $id ?>" value="<?= /* @noEscape */ $pipeline ?>"><?= /* @noEscape */ $pipeline ?></option>
+                                            <?php
+                                        }else{
+                                            ?>
+                                            <option name="<?= /* @noEscape */ $id ?>" value="<?= /* @noEscape */ $pipeline ?>"><?= /* @noEscape */ $pipeline ?></option>
+                                        <?php } } ?>
+                                </select>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <hr>
+                <h2 class="title">Deal Stages Mapping </h2>
+                <div id="change_pipeline_stage">
+                    <table>
+                        <tbody>
+                        <tr>
+                            <th>
+                                <label ><h3>Magento Order Status </h3></label>
+                            </th>
+                            <th>
+                                <label ><h3>HubSpot Deal Status </h3></label>
+                            </th>
+                        </tr>
+                        <?php
+                        if(!empty($userStageData)){
+                            foreach($magentoOrderStatus as $code => $mlabel){ ?>
+                                <tr>
+                                    <td>
+                                        <label ><?= /* @noEscape */ $mlabel ?> </label>
+                                    </td>
+                                    <td>
+                                        <select name="<?= /* @noEscape */ $code ?>" id="selected_pipeline_stage">
+                                            <?php foreach($defaultStage as $id => $hlabel){
+                                                $selected = false;
+                                            if($defaultStageCheck != null){
+                                                foreach($userStageData as $uStatusCode => $uDealId) {
+                                                    if ($code == $uStatusCode && $id == $uDealId) {
+                                                        ?>
+                                                        <option selected="<?= /* @noEscape */ $hlabel ?>" name="<?= /* @noEscape */ $id ?>" value="<?= /* @noEscape */ $id ?>"><?= /* @noEscape */ $hlabel ?></option>
+                                                        <?php
+                                                        $selected = true;
+                                                    }
+                                                }
+                                            }
+                                            if($selected == false){
+                                                ?>
+                                                <option name="<?= /* @noEscape */ $id ?>" value="<?= /* @noEscape */ $id ?>"><?= /* @noEscape */ $hlabel ?></option>
+                                            <?php } } ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                            <?php }
+                        }
+                        else{
+                            foreach($magentoOrderStatus as $code => $mlabel){ ?>
+                                <tr>
+                                    <td>
+                                        <label ><?= /* @noEscape */ $mlabel ?> </label>
+                                    </td>
+                                    <td>
+                                        <select name="<?= /* @noEscape */ $code ?>" id="selected_pipeline_stage">
+                                            <?php foreach($defaultStage as $id => $hlabel){
+                                                $selected = false;
+                                                if($defaultStageCheck != null){
+                                                    foreach($defaultStageCheck as $uStatusCode => $uDealId) {
+                                                        if ($code == $uStatusCode && $id == $uDealId) {
+                                                            ?>
+                                                            <option selected="<?= /* @noEscape */ $hlabel ?>" name="<?= /* @noEscape */ $id ?>" value="<?= /* @noEscape */ $id ?>"><?= /* @noEscape */ $hlabel ?></option>
+                                                            <?php
+                                                            $selected = true;
+                                                        }
+                                                    }
+                                                }
+                                                if($selected == false){
+                                                    ?>
+                                                    <option name="<?= /* @noEscape */ $id ?>" value="<?= /* @noEscape */ $id ?>"><?= /* @noEscape */ $hlabel ?></option>
+                                                <?php } } ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                            <?php }
+                        }
+                        ?>
+
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mapping_save_auth">
+                    <table>
+                        <tr>
+                            <td>
+                                <button id="save" title="Save" type="button" class="action-default scalable save primary ui-button ui-corner-all ui-widget">
+                                    <span>Save</span>
+                                </button>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </form>
+        </div>
+        <?php } else { ?>
+            <div class="admin__page-section-item">
+                <div class="connection-status disconnected">
+                    <div class="graph-circle">
+                        <svg viewBox="0 0 36 36" class="circular-chart disconnected">
+                            <path class="circle-bg"
+                                d="M18 2.0845
+                                a 15.9155 15.9155 0 0 1 0 31.831
+                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                            <path class="circle"
+                                stroke-dasharray="100, 100"
+                                d="M18 2.0845
+                                a 15.9155 15.9155 0 0 1 0 31.831
+                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                            />
+                        </svg>
+                        <div class="content">
+                            <div class="icon"><i class="fa fa-close"></i></div>
+                            <span class="item-description"><?= /* @noEscape */ __('Not Connected'); ?></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php } ?>
+    </div>
+
+    <script>
+        require([
+            'jquery',
+            'Magento_Ui/js/modal/alert'
+        ], function ($, alert) {
+            $(document).ready(function () {
+                $('#save').on('click', () => {
+                    var data = $('form').serialize();
+                    $.post('<?= /* @noEscape */ $formAction ?>', data, function (data){
+                        alert({title: $.mage.__(''),
+                            content: $.mage.__('Deal Stages Mapping have Saved!')});
+                    });
+                });
+                var pipeline = $("#selected_pipeline").val();
+                var url = '<?= /* @noEscape */ $block->getAdminBaseUrl() ?>/hubintegration/config/selectedpipeline';
+                $("#selected_pipeline").on('change', (function () {
+                    var pipeline = this.value;
+                    $.post(url,{pipeline: pipeline}, function (data) {
+                        $('#change_pipeline_stage').html(data);
+                    });
+                }));
+            });
+        })
+    </script>
+</section>
+

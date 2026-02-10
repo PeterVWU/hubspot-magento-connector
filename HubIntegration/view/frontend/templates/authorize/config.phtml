@@ -1,0 +1,207 @@
+<?php
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+
+?>
+<?php
+/* @var $block \Makewebbetter\HubIntegration\Block\Authorize\Config */
+$successImg = $block->getViewFileUrl('Makewebbetter_HubIntegration::images/fam_bullet_success.svg');
+$loaderImg = $block->getViewFileUrl('Makewebbetter_HubIntegration::images/rule-ajax-loader.gif');
+if ($block->getConnectionStatus()) { ?>
+    <div class="admin__page-section-item connected">
+        <div class="connection-status connected">
+            <div class="graph-circle">
+                <svg viewBox="0 0 36 36" class="circular-chart connected">
+                    <path class="circle-bg"
+                          d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path class="circle"
+                          stroke-dasharray="100, 100"
+                          d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                </svg>
+                <div class="content">
+                    <div class="icon"><i class="fa fa-check"></i></div>
+                </div>
+            </div>
+            <div class="bottom-content">
+                <span class="item-description"><?= /* @noEscape */ __('Connected'); ?></span>
+                <h3 class="installation-instruction"><?= /* @noEscape */ __('Installation in progress, please do not close window.'); ?></h3>
+            </div>
+        </div>
+        <div id="mapping_next" class="mapping_next">
+            <button disabled id="next" title="Next" type="button" class="action-default scalable save primary ui-button ui-corner-all ui-widget">
+                <span>Next</span>
+            </button>
+        </div>
+    </div>
+    <div class="modal-body">
+        <div class="container steps-wrap installation-progress">
+            <ul class="steps-inner custom-progressbar">
+                <li class="group-and-property inprogress">
+                    <?= /* @noEscape */ __('Groups and Properties'); ?>
+                    <div class="load-dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </li>
+                <li class="contact-lists"><?= /* @noEscape */ __('Contact Lists'); ?>
+                    <div class="load-dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </li>
+                <li class="work-flows"><?= /* @noEscape */ __('Workflows'); ?>
+                    <div class="load-dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </li>
+            </ul>
+            <div class="list-wrapper">
+                <div class="group-and-property-list inactive">
+                    <ul>
+                        <li>Customer Group</li>
+                        <li>Order</li>
+                        <li>Shopping Cart Information</li>
+                        <li>Last Products Bought</li>
+                        <li>Categories Bought</li>
+                        <li>RFM Information</li>
+                    </ul>
+                </div>
+                <div class="contact-lists-list inactive">
+                    <ul>
+                        <li>Best Customers</li>
+                        <li>Big Spenders</li>
+                        <li>Loyal Customers</li>
+                        <li>Churning Customers</li>
+                        <li>Low Value Lost Customers</li>
+                        <li>New Customers</li>
+                        <li>Customers needing attention</li>
+                        <li>About to Sleep</li>
+                        <li>Mid Spenders</li>
+                        <li>Low Spenders</li>
+                        <li>Newsletter Subscriber</li>
+                        <li>One time purchase customers</li>
+                        <li>Two time purchase customers</li>
+                        <li>Three time purchase customers</li>
+                        <li>Bought four or more times</li>
+                        <li>Leads</li>
+                        <li>Marketing Qualified Leads</li>
+                        <li>Customers</li>
+                        <li>ngaged Customers</li>
+                        <li>DisEngaged Customers</li>
+                        <li>Repeat Buyers</li>
+                    </ul>
+                    <button type="button" class="view_more contact_list">View More</button>
+                </div>
+                <div class="work-flows-list inactive">
+                    <ul>
+                        <li>Makewebbetter: MQL to Customer lifecycle stage Conversion</li>
+                        <li>Makewebbetter: Welcome New Customer & Get a 2nd Order</li>
+                        <li>Makewebbetter: 2nd Order Thank You & Get a 3rd Order</li>
+                        <li>Makewebbetter: 3rd Order Thank You</li>
+                        <li>Makewebbetter: ROI Calculation</li>
+                        <li>Makewebbetter: Order Workflow</li>
+                        <li>Makewebbetter: set Order Recency 1 Ratings</li>
+                        <li>Makewebbetter: set Order Recency 2 Ratings</li>
+                        <li>Makewebbetter: set Order Recency 3 Ratings</li>
+                        <li>Makewebbetter: set Order Recency 4 Ratings</li>
+                        <li>Makewebbetter: set Order Recency 5 Ratings</li>
+                        <li>Makewebbetter: Update Historical Order Recency Rating</li>
+                        <li>Makewebbetter: Enroll Customers for Recency Settings</li>
+                        <li>Makewebbetter: After order Workflow</li>
+                    </ul>
+                    <button type="button" class="view_more work_flow">View More</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/x-magento-init">
+        {
+        "*" :{
+        "Makewebbetter_HubIntegration/js/config_properties_lists_workflow":{
+           "PropertiesAjaxUrl" : "<?= /* @noEscape */ $block->baseUrl() ?>hubintegration/config/exportproperties/task/group_property",
+           "ListsAjaxUrl" : "<?= /* @noEscape */ $block->baseUrl() ?>hubintegration/config/exportproperties/task/list",
+           "WorkflowAjaxUrl" : "<?= /* @noEscape */ $block->baseUrl() ?>hubintegration/config/exportproperties/task/workflow",
+           "SuccessImg" : "<?= /* @noEscape */ $successImg; ?>"
+                 }
+             }
+        }
+    </script>
+    <script>
+        require([
+            'jquery'
+        ], function ($) {
+            $('.contact_list').on('click', () => {
+                if ($('.contact_list').text() == 'View More') {
+                    $('.contact_list').prev().eq(0).addClass('showFull');
+                    $('.contact_list').text('View Less')
+                } else {
+                    $('.contact_list').text('View More');
+                    $('.contact_list').prev().eq(0).removeClass('showFull');
+                }
+            });
+            $('.work_flow').on('click', () => {
+                if ($('.work_flow').text() == 'View More') {
+                    $('.work_flow').prev().eq(0).addClass('showFull');
+                    $('.work_flow').text('View Less')
+                } else {
+                    $('.work_flow').text('View More');
+                    $('.work_flow').prev().eq(0).removeClass('showFull');
+                }
+            });
+            $('#next').on('click', () => {
+                window.location.replace("mapping");
+            });
+        })
+    </script>
+<?php } else { ?>
+    <div class="admin__page-section-item">
+        <div class="connection-status disconnected">
+            <div class="graph-circle">
+                <svg viewBox="0 0 36 36" class="circular-chart disconnected">
+                    <path class="circle-bg"
+                          d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path class="circle"
+                          stroke-dasharray="100, 100"
+                          d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                </svg>
+                <div class="content">
+                    <div class="icon"><i class="fa fa-close"></i></div>
+                    <span class="item-description"><?= /* @noEscape */ __('Not Connected To HubSpot'); ?></span>
+                </div>
+            </div>
+            <div class="bottom-content">
+                <h3><?= /* @noEscape */ __('Connection Failed'); ?></h3>
+            </div>
+        </div>
+    </div>
+<?php } ?>

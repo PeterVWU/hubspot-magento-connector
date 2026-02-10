@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <resource id="Magento_Backend::stores">
+                    <resource id="Magento_Backend::stores_settings">
+                        <resource id="Magento_Config::config">
+                            <resource id="Makewebbetter_HubIntegration::settings" title="HubSpot Integration" />
+                        </resource>
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::hub_details" title="HubSpot Dashboard" sortOrder="30" />
+                </resource>
+                <resource id="Makewebbetter_HubIntegration::hub" title="HubSpot" sortOrder="30">
+                    <resource id="Makewebbetter_HubIntegration::hubspot" title="HubSpot" sortOrder="10">
+                        <resource id="Makewebbetter_HubIntegration::active_carts" title="Abandoned Carts" sortOrder="10">
+                            <resource id="Makewebbetter_HubIntegration::cart_actions" title="Actions" sortOrder="10" >
+                                <resource id="Makewebbetter_HubIntegration::cart_export_to_hubspot" title="Export To HubSpot" sortOrder="10"/>
+                            </resource>
+                        </resource>
+                        <resource id="Makewebbetter_HubIntegration::hub_error_log" title="Error Log" sortOrder="20" >
+                            <resource id="Makewebbetter_HubIntegration::error_actions" title="Actions" sortOrder="10" >
+                                <resource id="Makewebbetter_HubIntegration::error_log_mass_delete" title="Delete" sortOrder="10"/>
+                            </resource>
+                        </resource>
+                        <resource id="Makewebbetter_HubIntegration::cron_status" title="Cron Status" sortOrder="30" />
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::data_transfer" title="Data Transfer" sortOrder="30">
+                        <resource id="Makewebbetter_HubIntegration::export" title="Export" sortOrder="10" />
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::hub_settings" title="Settings" sortOrder="40">
+                        <resource id="Makewebbetter_HubIntegration::hub_config" title="Configuration" sortOrder="10" />
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::catalog" title="Catalog" sortOrder="50">
+                        <resource id="Makewebbetter_HubIntegration::products" title="Products" sortOrder="10" >
+                            <resource id="Makewebbetter_HubIntegration::product_actions" title="Actions" sortOrder="10" >
+                                <resource id="Makewebbetter_HubIntegration::product_export_to_hubspot" title="Export To HubSpot" sortOrder="10"/>
+                            </resource>
+                        </resource>
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::customers" title="Customers" sortOrder="60">
+                        <resource id="Makewebbetter_HubIntegration::all_customers" title="All Customers" sortOrder="10" >
+                            <resource id="Makewebbetter_HubIntegration::customer_actions" title="Actions" sortOrder="10" >
+                                <resource id="Makewebbetter_HubIntegration::customer_export_to_hubspot" title="Export To HubSpot" sortOrder="10"/>
+                            </resource>
+                        </resource>
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::sales" title="Sales" sortOrder="70">
+                        <resource id="Makewebbetter_HubIntegration::orders" title="Orders" sortOrder="10" >
+                            <resource id="Makewebbetter_HubIntegration::order_actions" title="Actions" sortOrder="10" >
+                                <resource id="Makewebbetter_HubIntegration::order_export_to_hubspot" title="Export To HubSpot" sortOrder="10"/>
+                            </resource>
+                        </resource>
+                    </resource>
+                    <resource id="Makewebbetter_HubIntegration::sync_export_to_hubspot" title="Sync Wtih HubSpot" sortOrder="10" />
+                    <resource id="Makewebbetter_HubIntegration::hub_helpguide" title="Support" sortOrder="30">
+                        <resource id="Makewebbetter_HubIntegration::hub_support" title="Live Assistance" sortOrder="10" />
+                        <resource id="Makewebbetter_HubIntegration::hub_userguide" title="Documentation" sortOrder="10" />
+                    </resource>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

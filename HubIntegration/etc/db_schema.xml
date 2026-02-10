@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+ -->
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- HubSpot Error Log Table -->
+    <table name="hub_makewebbetter_error_log" resource="default" engine="innodb" comment="MAKEWEBBETTER Error Log">
+        <column xsi:type="int" name="id" padding="10" unsigned="true" nullable="false" identity="true" comment="Log ID"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Log Creation Time"/>
+        <column xsi:type="varchar" name="request_url" nullable="true" length="255" comment="Request Url"/>
+        <column xsi:type="varchar" name="request_type" nullable="true" length="16" comment="Request Type"/>
+        <column xsi:type="mediumtext" name="request_params" nullable="true" comment="Request Params"/>
+        <column xsi:type="smallint" name="response_code" padding="6" unsigned="false" nullable="true" identity="false" default="0" comment="Response Code"/>
+        <column xsi:type="mediumtext" name="response" nullable="true" comment="Response (json_body)"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+    </table>
+
+    <!-- HubSpot Configuration Table -->
+    <table name="makewebbetter_hub_config_data" resource="default" engine="innodb" comment="HubSpot Config Data">
+        <column xsi:type="int" name="config_id" padding="10" unsigned="true" nullable="false" identity="true" comment="Config ID"/>
+        <column xsi:type="varchar" name="path" nullable="false" length="255" default="general" comment="Config Path"/>
+        <column xsi:type="text" name="value" nullable="true" comment="Config Value"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP" comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="config_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="Makewebbetter_HUB_CONFIG_DATA_PATH">
+            <column name="path"/>
+        </constraint>
+    </table>
+
+    <!-- HubSpot Makewebbetter Items -->
+    <table name="hub_makewebbetter_items" resource="default" engine="innodb" comment="HubSpot Makewebbetter Items">
+        <column xsi:type="int" name="id" padding="10" unsigned="true" nullable="false" identity="true" comment="ID"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="varchar" name="object_type" nullable="false" length="20" default="general" comment="Object Type"/>
+        <column xsi:type="int" name="object_id" padding="10" nullable="false" comment="Object Id"/>
+        <column xsi:type="int" name="quote_id" padding="10" nullable="false" comment="Quote ID"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <index referenceId="MAKEWEBBETTER_HUB_OBJECT_TYPE" indexType="btree">
+            <column name="object_type"/>
+        </index>
+        <index referenceId="MAKEWEBBETTER_HUB_OBJECT_ID" indexType="btree">
+            <column name="object_id"/>
+        </index>
+    </table>
+
+    <!-- HubSpot Makewebbetter Queued Items -->
+    <table name="hub_makewebbetter_queued_items" resource="default" engine="innodb" comment="HubSpot Makewebbetter Queued Items">
+        <column xsi:type="int" name="id" padding="10" unsigned="true" nullable="false" identity="true" comment="ID"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="varchar" name="object_type" nullable="false" length="20" default="general" comment="Object Type"/>
+        <column xsi:type="int" name="batch_id" padding="10" nullable="false" comment="Batch ID"/>
+        <column xsi:type="int" name="batch_id_count" padding="10" nullable="false" comment="Batch Id Count"/>
+        <column xsi:type="int" name="total_count" padding="10" nullable="false" comment="Total Count"/>
+        <column xsi:type="mediumtext" name="id_json" nullable="false" comment="Ids in json"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <index referenceId="MAKEWEBBETTER_HUB_OBJECT_TYPE" indexType="btree">
+            <column name="object_type"/>
+        </index>
+        <index referenceId="MAKEWEBBETTER_HUB_BATCH_ID" indexType="btree">
+            <column name="batch_id"/>
+        </index>
+    </table>
+
+    <!-- Adding column for the deail id in Sales order table -->
+    <table name="sales_order" resource="default" engine="innodb" comment="Sales Order">
+        <column xsi:type="varchar" name="hub_deal_id" nullable="true" length="50" comment="Hub Deal Sync" />
+    </table>
+
+    <!-- Adding column for the Line Items in quote item table -->
+    <table name="quote_item" resource="default" engine="innodb" comment="Quote Item">
+        <column xsi:type="varchar" name="hub_line_items_id" nullable="true" length="100" comment="Hub Line Items Id" />
+    </table>
+
+    <!-- Adding column for the deail id in quote table -->
+    <table name="quote" resource="default" engine="innodb" comment="Quote">
+        <column xsi:type="varchar" name="hub_deal_id" nullable="true" length="100" comment="Hub Qoute Id" />
+    </table>
+
+    <!-- Adding column for the Line Items in quote item table -->
+    <table name="sales_order_item" resource="default" engine="innodb" comment="Order Item">
+        <column xsi:type="varchar" name="hub_line_items_id" nullable="true" length="100" comment="Hub Line Items Id" />
+    </table>
+</schema>

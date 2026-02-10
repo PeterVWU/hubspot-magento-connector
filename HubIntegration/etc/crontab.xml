@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@Makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://Makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+ -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <job name="makewebbetter_hub_export_to_hubspot" instance="Makewebbetter\HubIntegration\Cron\ExportToHubspot" method="execute">
+            <config_path>hub_integration/export_settings/cron_time</config_path>
+        </job>
+        <job name="makewebbetter_hub_export_old_data" instance="Makewebbetter\HubIntegration\Cron\ExportOldData" method="execute">
+            <schedule>*/20 * * * *</schedule>
+        </job>
+        <job name="makewebbetter_hub_delete_error_log" instance="Makewebbetter\HubIntegration\Cron\Delete" method="deleteErrorLog">
+            <schedule>1 0 * * *</schedule>
+        </job>
+        <job name="makewebbetter_hub_license_check" instance="Makewebbetter\HubIntegration\Cron\Check" method="execute">
+            <schedule>0 1 1,15 * *</schedule>
+        </job>
+    </group>
+</config>

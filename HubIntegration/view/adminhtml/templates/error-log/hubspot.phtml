@@ -1,0 +1,265 @@
+<?php
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+?>
+<?php
+$hubspotErrorType = $block->getHubSpotErrorType();
+$hubspotObjectType = $block->getHubSpotObjectType();
+$filterParameters = $block->getRequest()->getParams();
+if (isset($filterParameters['key']))
+    unset($filterParameters['key']);
+$filterIncludeResolvedError = '';
+$filterErrorType = '';
+$filterObjectType = '';
+$limit = 200;
+$page = 1;
+if (isset($filterParameters['include_resolved_error']) && in_array($filterParameters['include_resolved_error'], [0, 1]) ) :
+    $filterIncludeResolvedError = (string)$filterParameters['include_resolved_error'];
+endif;
+if (isset($filterParameters['error_type']) && $filterParameters['error_type']) :
+    $filterErrorType = $filterParameters['error_type'];
+endif;
+if (isset($filterParameters['object_type']) && $filterParameters['object_type']) :
+    $filterObjectType = $filterParameters['object_type'];
+endif;
+if (isset($filterParameters['limit']) &&
+    $filterParameters['limit'] >= 1 &&
+    $filterParameters['limit'] <= 200
+) {
+    $limit = $filterParameters['limit'];
+}
+if (isset($filterParameters['page']) &&
+    $filterParameters['page'] >= 1
+) {
+    $page = $filterParameters['page'];
+}
+$hubspotErrorLog = '';
+//$hubspotErrorLog = $block->getHubSpotErrorLog($filterParameters, $page, $limit);
+?>
+<div class="makewebbetter-hubspot-error-log-container">
+    <!-- Filter & pager -->
+    <div class="makewebbetter-hub-filter-container row">
+        <div class="admin__field field col-sm-3">
+            <label class="label admin__field-label" for="include-resolved-error">
+                <span><?= /* @noEscape */ __('Include Resolved Error'); ?></span>
+            </label>
+            <div class="admin__field-control control">
+                <select id="include-resolved-error"
+                        name="include_resolved_error"
+                        class="validate-no-html-tags required-entry required-entry _required select admin__control-select">
+                    <option value=""><?= /* @noEscape */ __('Please Select'); ?></option>
+                    <option value="1"
+                        <?php if ($filterIncludeResolvedError == '1') :?>
+                            selected="selected"
+                        <?php endif; ?>
+                    >
+                        <?= /* @noEscape */ __('Yes'); ?>
+                    </option>
+                    <option value="0"
+                        <?php if ($filterIncludeResolvedError == '0') :?>
+                            selected="selected"
+                        <?php endif; ?>
+                    ><?= /* @noEscape */ __('No'); ?></option>
+                </select>
+            </div>
+        </div>
+        <div class="admin__field field col-sm-3">
+            <label class="label admin__field-label" for="error-type">
+                <span><?= /* @noEscape */ __('Error Type');?></span>
+            </label>
+            <div class="admin__field-control control">
+                <select id="error-type" name="error_type"
+                        class="validate-no-html-tags required-entry required-entry _required select admin__control-select">
+                    <?php foreach ($hubspotErrorType as $value => $label) :?>
+                        <option value="<?= /* @noEscape */ $value; ?>"
+                            <?php if (isset($filterParameters['error_type']) &&
+                                $filterParameters['error_type'] == $value) :?>
+                                selected="selected"
+                            <?php endif; ?>
+                        ><?= /* @noEscape */ $label; ?></option>
+                    <?php endforeach;?>
+                </select>
+            </div>
+        </div>
+        <div class="admin__field field col-sm-3">
+            <label class="label admin__field-label" for="object-type">
+                <span><?= /* @noEscape */ __('Object Type');?></span>
+            </label>
+            <div class="admin__field-control control">
+                <select id="object-type" name="object_type"
+                        class="validate-no-html-tags required-entry required-entry _required select admin__control-select">
+                    <?php foreach ($hubspotObjectType as $value => $label) :?>
+                        <option value="<?= /* @noEscape */ $value; ?>"
+                            <?php if (isset($filterParameters['object_type']) &&
+                                $filterParameters['object_type'] == $value) :?>
+                                selected="selected"
+                            <?php endif; ?>
+                        ><?= /* @noEscape */ $label; ?></option>
+                    <?php endforeach;?>
+                </select>
+            </div>
+        </div>
+        <div class="admin__field field col-sm-3">
+            <label class="label admin__field-label" for="limit">
+                <span><?= /* @noEscape */ __('Limit'); ?></span>
+            </label>
+            <div class="admin__field-control control">
+                <input id="limit"
+                       name="limit"
+                       value="<?= /* @noEscape */ $limit; ?>"
+                       class="validate-no-html-tags required-entry input-text admin__control-text required-entry _required"
+                       type="text">
+                <label class="addafter" for="limit-note">
+                    <span class="note">
+                        <small><?= /* @noEscape */ __('Please enter limit between 1 - 200'); ?></small>
+                    </span>
+                </label>
+                <label for="limit" class="mage-error" id="limit-error" style="display: none;"></label>
+            </div>
+        </div>
+    </div>
+    <div class="makewebbetter-hub-pager-container">
+        <div class="makewebbetter-hub-pager-wrapper">
+            <?php if ($hubspotErrorLog && isset($hubspotErrorLog['results'])) : ?>
+                <div class="admin__control-support-text">
+                    <span><?= /* @noEscape */ __('%1 records found', count($hubspotErrorLog['results']))?></span>
+                </div>
+            <?php endif;?>
+        </div>
+        <div class="get-hubspot-error-button-wrapper">
+            <button id="back"
+                    title="<?= /* @noEscape */ __('Back')?>"
+                    type="button"
+                    class="action-default scalable back"
+                    onclick="setLocation('<?= /* @noEscape */ $block->getUrl('hubintegration/errorlog/index')?>')"
+            >
+                <span><?= /* @noEscape */ __('Back')?></span>
+            </button>
+            <button class="get-hubspot-error-button primary"
+                    type="button"
+                    title="<?= /* @noEscape */ __('Apply Filter'); ?>"
+                <?php if (count($filterParameters)) : ?>
+                    disabled="disabled"
+                <?php endif; ?>
+            >
+                <span><?= /* @noEscape */ __('Apply Filter'); ?></span>
+            </button>
+            <?php if (count($filterParameters)) : ?>
+                <button id="reset-filter"
+                        title="<?= /* @noEscape */ __('Reset')?>"
+                        type="button"
+                        class="action-default scalable reset-filter"
+                        onclick="setLocation('<?= /* @noEscape */ $block->getUrl('hubintegration/errorLog_hubspot/index')?>')"
+                >
+                    <span><?= /* @noEscape */ __('Reset')?></span>
+                </button>
+            <?php endif; ?>
+            <button class="hubspot-previous-button"
+                    type="button"
+                    title="<?= /* @noEscape */ __('Previous'); ?>"
+                <?php if ($page == 1) : ?>
+                    disabled="disabled"
+                <?php endif; ?>
+            >
+                <span><?= /* @noEscape */ __('Previous'); ?></span>
+            </button>
+            <button class="hubspot-next-button"
+                    type="button"
+                    title="<?= /* @noEscape */ __('Next'); ?>"
+                <?php if (!(isset($hubspotErrorLog['paging']['next']['page']) && $hubspotErrorLog['paging']['next']['page'])) : ?>
+                    disabled="disabled"
+                <?php endif; ?>
+            >
+                <span><?= /* @noEscape */ __('Next'); ?></span>
+            </button>
+        </div>
+    </div>
+    <!-- Filter & pager -->
+
+    <!-- List HubSpot Error Logs -->
+    <div id="hubSpotErrorLogGrig" data-grid-id="hubSpotErrorLogGrig">
+        <div class="admin__data-grid-wrap">
+            <table class="data-grid" id="hubSpotErrorLogGrig_table">
+                <thead>
+                <tr>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('Object Type'); ?></span>
+                    </th>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('External Object Id'); ?></span>
+                    </th>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('Changed At'); ?></span>
+                    </th>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('Errored At'); ?></span>
+                    </th>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('Type'); ?></span>
+                    </th>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('Status'); ?></span>
+                    </th>
+                    <th class="data-grid-th">
+                        <span><?= /* @noEscape */ __('Details'); ?></span>
+                    </th>
+                </thead>
+                <?php if ($hubspotErrorLog && isset($hubspotErrorLog['results']) && count($hubspotErrorLog['results'])) : ?>
+                    <tbody>
+                    <?php foreach ($hubspotErrorLog['results'] as $error) : ?>
+                        <tr title="" class="even">
+                            <td><?= /* @noEscape */ $error['objectType']; ?></td>
+                            <td><?= /* @noEscape */ $error['externalObjectId']; ?></td>
+                            <td><?= /* @noEscape */ date('Y-m-d H:i:s', substr($error['changedAt'], 0, -3)); ?></td>
+                            <td><?= /* @noEscape */ date('Y-m-d H:i:s', substr($error['erroredAt'], 0, -3)); ?></td>
+                            <td><?= /* @noEscape */ $error['type']; ?></td>
+                            <td><?= /* @noEscape */ $error['status']; ?></td>
+                            <td><?= /* @noEscape */ $error['details']; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                <?php else: ?>
+                    <tbody>
+                    <tr class="data-grid-tr-no-data">
+                        <td colspan="7"><?= /* @noEscape */ __('No HubSpot Error Log Found'); ?></td>
+                    </tr>
+                    </tbody>
+                <?php endif;?>
+            </table>
+        </div>
+    </div>
+    <!-- List HubSpot Error Logs -->
+</div>
+
+<script type="text/x-magento-init">
+    {
+        "*" :{
+            "Makewebbetter_HubIntegration/js/hubspot-error-log":{
+                "filterUrl" : "<?= /* @noEscape */  $block->getUrl('*/*/*'); ?>",
+                "validNumberErrorMessage" : "<?= /* @noEscape */ __('Please enter a valid number in this field.'); ?>",
+                "rangeErrorMessage" : "<?= /* @noEscape */ __('Please enter number between 1 - 200.'); ?>",
+                "oldIncludeResolvedError" : "<?= /* @noEscape */ $filterIncludeResolvedError; ?>",
+                "oldErrorType" : "<?= /* @noEscape */ $filterErrorType; ?>",
+                "oldObjectType" : "<?= /* @noEscape */ $filterObjectType; ?>",
+                "oldLimit" : "<?= /* @noEscape */ $limit; ?>",
+                "currentPage" : "<?= /* @noEscape */ $page; ?>",
+                "nextPage" : "<?= $page + 1; ?>",
+                "previousPage" : "<?= ($page > 1 ) ? $page - 1 : 1;?>"
+           }
+        }
+    }
+</script>

@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author 		Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+          <add id="Makewebbetter_HubIntegration::hub"
+               title="HubSpot (V-2.1.9)"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="15"
+               resource="Makewebbetter_HubIntegration::hub"
+               dependsOnConfig="hub_integration/hubspot_integration/enable"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_settings"
+               title="Settings"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::hub"
+               resource="Makewebbetter_HubIntegration::hub_settings"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_details"
+               title="Dashboard"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::hub_settings"
+               action="hubintegration/hubspotdetails/index"
+               resource="Makewebbetter_HubIntegration::hub_config"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_config"
+               title="Configuration"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::hub_settings"
+               action="adminhtml/system_config/edit/section/hub_integration"
+               resource="Makewebbetter_HubIntegration::hub_config"
+          />
+          <add id="Makewebbetter_HubIntegration::data_transfer"
+               title="Data Transfer"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="20"
+               parent="Makewebbetter_HubIntegration::hub"
+               resource="Makewebbetter_HubIntegration::data_transfer"
+          />
+          <add id="Makewebbetter_HubIntegration::export"
+               title="Export"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::data_transfer"
+               action="hubintegration/config/exportOldData"
+               resource="Makewebbetter_HubIntegration::export"
+          />
+          <add id="Makewebbetter_HubIntegration::hubspot"
+               title="HubSpot"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="25"
+               parent="Makewebbetter_HubIntegration::hub"
+               resource="Makewebbetter_HubIntegration::hubspot"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_active_carts"
+               title="Abandoned Carts"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::hubspot"
+               action="hubintegration/activeCarts/index"
+               resource="Makewebbetter_HubIntegration::active_carts"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_makewebbetter_errors"
+               title="Error Log"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::hubspot"
+               action="hubintegration/errorlog/index"
+               resource="Makewebbetter_HubIntegration::hub_error_log"
+          />
+          <add id="Makewebbetter_HubIntegration::cron_status"
+               title="Cron Status"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               parent="Makewebbetter_HubIntegration::hubspot"
+               action="hubintegration/cron/index"
+               resource="Makewebbetter_HubIntegration::cron_status"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_helpguide"
+               title="Support"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="30"
+               parent="Makewebbetter_HubIntegration::hub"
+               resource="Makewebbetter_HubIntegration::hub_helpguide"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_support"
+               title="Live Assistance"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               target="_blank"
+               parent="Makewebbetter_HubIntegration::hub_helpguide"
+               resource="Makewebbetter_HubIntegration::hub_support"
+          />
+          <add id="Makewebbetter_HubIntegration::hub_userguide"
+               title="Documentation"
+               module="Makewebbetter_HubIntegration"
+               sortOrder="10"
+               target="_blank"
+               parent="Makewebbetter_HubIntegration::hub_helpguide"
+               resource="Makewebbetter_HubIntegration::hub_userguide"
+          />
+    </menu>
+</config>

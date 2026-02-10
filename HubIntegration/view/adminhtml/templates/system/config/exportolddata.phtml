@@ -1,0 +1,85 @@
+<?php
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+
+/** @var  $block \Makewebbetter\HubIntegration\Block\Adminhtml\System\Config\ExportOldData */
+$percentResult = $block->getPercentage();
+$contactPercent = $percentResult['CONTACT']['percent'];
+$productPercent = $percentResult['PRODUCT']['percent'];
+$dealPercent = $percentResult['DEAL']['percent'];
+$showProgressBar = $block->showProgressBar();
+?>
+<?php if (!$block->getConnectionStatus()):
+    $configUrl = $block->getUrl('adminhtml/system_config/edit/section/hub_integration');
+    ?>
+    <div class="messages">
+        <div class="message message-info info">
+            <div>
+                <?= $block->escapeHtml(__('Please Authorize first before export. <a href="%1">Click Here</a> for Authorization.', $configUrl), ['a']); ?>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+<?php if ($showProgressBar) :?>
+    <div class="steps-wrap">
+        <ul class="steps-inner">
+            <li class="step step-undone step-active step-complete
+                <?php if ($productPercent < 100) : echo ' processing'; endif;?>"
+                <?php if ($productPercent < 100): ?>
+                    style="--progress-width: <?= /* @noEscape */ $productPercent; ?>%"
+                <?php endif;?>
+            >
+                <span class="step-icon"></span>
+                <span class="step-label"><?= /* @noEscape */ __('Start'); ?></span>
+            </li>
+            <li class="step step-undone step-active
+                <?php if ($productPercent == 100) : echo ' step-complete'; endif;?>
+                <?php if ($contactPercent < 100) : echo ' processing'; endif;?>"
+                <?php if ($contactPercent < 100): ?>
+                    style="--progress-width: <?= /* @noEscape */ $contactPercent; ?>%"
+                <?php endif;?>
+            >
+                <span class="step-icon"><span>1</span></span>
+                <span class="step-label"><?= /* @noEscape */ __('Products'); ?></span>
+            </li>
+            <li class="step step-undone step-active
+                <?php if ($contactPercent == 100) : echo ' step-complete'; endif;?>
+                <?php if ($dealPercent < 100) : echo ' processing'; endif;?>"
+                <?php if ($dealPercent < 100): ?>
+                    style="--progress-width: <?= /* @noEscape */ $dealPercent; ?>%"
+                <?php endif;?>
+            >
+                <span class="step-icon"><span>2</span></span>
+                <span class="step-label"><?= /* @noEscape */ __('Contacts'); ?></span>
+            </li>
+            <li class="step step-undone step-active <?php if ($dealPercent == 100) : echo ' step-complete'; endif;?>">
+                <span class="step-icon"><span>3</span></span>
+                <span class="step-label"><?= /* @noEscape */ __('Deals & Line Items'); ?></span>
+            </li>
+        </ul>
+    </div>
+<?php endif;?>
+<script type="text/x-magento-init">
+    {
+        "*" :{
+            "Makewebbetter_HubIntegration/js/export":{
+                "exportUrlWithAbandonedCart" : "<?= /* @noEscape */ $block->getExportUrlWithAbandonedCart(); ?>",
+                "exportUrlWithoutAbandonedCart" : "<?= /* @noEscape */ $block->getExportUrlWithoutAbandonedCart(); ?>"
+           }
+        }
+    }
+</script>

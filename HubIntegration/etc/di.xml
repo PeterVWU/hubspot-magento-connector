@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author 		Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="makewebbetter_hub_active_carts_listing_data_source" xsi:type="string">Makewebbetter\HubIntegration\Model\ResourceModel\ActiveCarts\Collection</item>
+                <item name="makewebbetter_hub_error_log_data_source" xsi:type="string">Makewebbetter\HubIntegration\Model\ResourceModel\ErrorLog\Grid\Collection</item>
+                <item name="makewebbetter_hub_cron_status_data_source" xsi:type="string">Makewebbetter\HubIntegration\Model\ResourceModel\Cron\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Magento\Backend\Model\Menu\Item">
+        <plugin name="mstCoreMarketplaceUrl" type="Makewebbetter\HubIntegration\Model\Menu\Item\HelpguideUrl"/>
+    </type>
+</config>

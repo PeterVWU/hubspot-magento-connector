@@ -1,0 +1,472 @@
+.warning-comment {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    padding: 10px 30px;
+    border-radius: 5px;
+    margin: 2rem 0;
+}
+.success-comment {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    padding: 10px 30px;
+    border-radius: 5px;
+    margin: 2rem 0;
+}
+@keyframes progress-bar {
+    0% {
+        stroke-dasharray: 0 100;
+    }
+}
+.admin_hub_dashboard {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.5rem;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status {
+    background: #ffffff none repeat scroll 0 0;
+    border-radius: 15px;
+    overflow: hidden;
+    padding: 2.5rem;
+    -webkit-transition: all 0.3s;
+    -moz-transition: all 0.3s;
+    -ms-transition: all 0.3s;
+    transition: all 0.3s;
+    position: relative;
+    text-align: center;
+    min-height: 170px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0 6px 12px -2px, rgba(0, 0, 0, 0.3) 0 3px 7px -3px;
+    z-index: 2;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status:after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: -100%;
+    left: 0;
+    -webkit-transition: all 0.3s;
+    -moz-transition: all 0.3s;
+    -ms-transition: all 0.3s;
+    transition: all 0.3s;
+    z-index: -1;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status:hover:after {
+    top: 0;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status .item-title {
+    display: block;
+    margin: 25px 0;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status .item-description {
+    bottom: 0;
+    color: #000000;
+    display: block;
+    font-weight: bold;
+    left: 0;
+    text-align: center;
+    width: 100%;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.product {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.product .graph-circle {
+    width: 40%;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.deal-report,
+.admin_hub_dashboard .admin__page-section-item .connection-status.connected,
+.admin_hub_dashboard .admin__page-section-item .connection-status.product {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.deal-report .graph-circle,
+.admin_hub_dashboard .admin__page-section-item .connection-status.connected .graph-circle,
+.admin_hub_dashboard .admin__page-section-item .connection-status.product .graph-circle {
+    width: 55%;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.deal-report.deal:after,
+.admin_hub_dashboard .admin__page-section-item .connection-status.connected.deal:after,
+.admin_hub_dashboard .admin__page-section-item .connection-status.product.deal:after {
+    background-color: #dff3ff70;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.deal-report.report:after,
+.admin_hub_dashboard .admin__page-section-item .connection-status.connected.report:after,
+.admin_hub_dashboard .admin__page-section-item .connection-status.product.report:after {
+    background-color: #e4e1ff47;
+}
+.admin_hub_dashboard .admin__page-section-item .connection-status.deal-report.product-hover:after,
+.admin_hub_dashboard .admin__page-section-item .connection-status.connected.product-hover:after,
+.admin_hub_dashboard .admin__page-section-item .connection-status.product.product-hover:after {
+    background-color: #fff0d954;
+}
+.admin_hub_dashboard .admin__page-section-item.deal-report,
+.admin_hub_dashboard .admin__page-section-item.product,
+.admin_hub_dashboard .admin__page-section-item.connected {
+    width: 48.5%;
+}
+.connection-status .icon i {
+    color: #4CC790;
+    font-size: 40px;
+    margin: 5px 0;
+    transition: all .3s;
+}
+.connection-status.connected .item-description {
+    font-weight: 800;
+    font-size: 15px;
+}
+.connection-status.connected:after {
+    background-color: #daffee66;
+}
+.connection-status.disconnected {
+    background: #ffffff none repeat scroll 0 0;
+    border-radius: 15px;
+    overflow: hidden;
+    padding: 2.5rem;
+    -webkit-transition: all 0.3s;
+    -moz-transition: all 0.3s;
+    -ms-transition: all 0.3s;
+    transition: all 0.3s;
+    position: relative;
+    text-align: center;
+    min-height: 170px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0 6px 12px -2px, rgba(0, 0, 0, 0.3) 0 3px 7px -3px;
+    z-index: 2;
+    max-width: 30%;
+}
+.connection-status.disconnected:after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: -100%;
+    left: 0;
+    -webkit-transition: all 0.3s;
+    -moz-transition: all 0.3s;
+    -ms-transition: all 0.3s;
+    transition: all 0.3s;
+    z-index: -1;
+}
+.connection-status.disconnected:hover:after {
+    top: 0;
+}
+.connection-status.disconnected .icon i {
+    color: #eb505d;
+    font-size: 40px;
+    margin: 10px 0;
+}
+.connection-status.disconnected .item-description {
+    font-weight: 800;
+    font-size: 15px;
+}
+.connection-status.disconnected:after {
+    background-color: #ffe4e56b;
+}
+.export-btn .btn.btn-info {
+    background: #eb5202 none repeat scroll 0 0;
+    border-radius: 2px;
+    color: #ffffff;
+    display: inline-block;
+    float: right;
+    padding: 12px 30px;
+    text-align: center;
+    text-decoration: none;
+}
+.contect-table-wrapper {
+    max-height: 550px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.contect-table-wrapper .fa-check {
+    color: #4dae4f;
+}
+.detail-content {
+    margin-top: 1rem;
+}
+.detail-content .accordion-main {
+    border: 1px solid #dadada;
+    margin-bottom: 1.5rem;
+}
+.detail-content .accordion-main .accordion-btn {
+    padding: 1.5rem 2.5rem;
+    margin-bottom: 0;
+    position: relative;
+    background-color: #dadada;
+    cursor: pointer;
+    -webkit-transition: all 0.3s;
+    -moz-transition: all 0.3s;
+    -ms-transition: all 0.3s;
+    transition: all 0.3s;
+    color: #000000;
+}
+.detail-content .accordion-main .accordion-btn[aria-expanded="true"]:after,
+.detail-content .accordion-main .accordion-btn[aria-expanded="false"]:after {
+    content: '\f107';
+    font-family: 'FontAwesome';
+    position: absolute;
+    right: 3.5rem;
+    top: 13px;
+    font-size: 2rem;
+    -webkit-transition: all 0.3s;
+    -moz-transition: all 0.3s;
+    -ms-transition: all 0.3s;
+    transition: all 0.3s;
+    box-shadow: rgba(100, 100, 111, 0.2) 0 7px 29px 0;
+    border-radius: 100%;
+    width: 2.5rem;
+    height: 2.5rem;
+    text-align: center;
+    background-color: #ffffff;
+    color: #000000;
+}
+.detail-content .accordion-main .accordion-btn[aria-expanded="true"]:after {
+    transform: rotate(180deg);
+}
+.detail-content .accordion-main .accordion-btn:hover {
+    background-color: #d2d2d2;
+}
+.detail-content .accordion-main .accordion-btn .title {
+    font-size: 16px;
+}
+.detail-content .accordion-main .accordianContent {
+    padding: 2rem 2.5rem;
+}
+.detail-content .accordion-main .accordianContent .admin__table-secondary tbody tr:nth-child(odd) td {
+    background-color: #efefef;
+}
+.graph-circle {
+    position: relative;
+}
+.graph-circle .content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.graph-circle .content h3 {
+    margin: 10px 0 0;
+    font-size: 35px;
+    color: #000000;
+}
+.bottom-content .item-title b {
+    font-size: 18px;
+    color: #000000;
+}
+.circular-chart {
+    display: block;
+    margin: 10px auto;
+    max-width: 70%;
+    max-height: 250px;
+}
+.circular-chart.disconnected .circle {
+    stroke: #eb505d;
+}
+.circular-chart.disconnected .circle-bg {
+    stroke: #fdd4d7;
+}
+.circular-chart.connected .circle {
+    stroke: #4CC790;
+}
+.circular-chart.connected .circle-bg {
+    stroke: #d3feeb;
+}
+.circular-chart.product .circle {
+    stroke: #ff9f00;
+}
+.circular-chart.product .circle-bg {
+    stroke: #ffebcb;
+}
+.circular-chart.deal .circle {
+    stroke: #3498db;
+}
+.circular-chart.deal .circle-bg {
+    stroke: #cce7f8;
+}
+.circular-chart.report .circle {
+    stroke: #6c5ce7;
+}
+.circular-chart.report .circle-bg {
+    stroke: #d1cbff;
+}
+.circle-bg {
+    fill: none;
+    stroke-width: 3.8;
+}
+.circle {
+    fill: none;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    animation: progress-bar 1s ease-out forwards;
+}
+#row_hub_integration_hubspot_integration_oauth2_authorize td.value p {
+    margin-top: 10px;
+    font-size: 14px;
+}
+.custom-table {
+    height: 320px;
+    overflow: hidden;
+}
+.custom-table.active {
+    height: auto;
+}
+.view_more {
+    float: right;
+    margin-top: 20px;
+}
+.pipeline-stage-mapping h2 {
+    padding: 20px 0 5px;
+    font-family: system-ui;
+    display: inline-block;
+    margin-bottom: 30px;
+    color: #000000;
+    font-weight: 500;
+}
+.pipeline-stage-mapping table {
+    font-family: system-ui;
+    width: 100%;
+}
+.pipeline-stage-mapping table select {
+    font-size: 14px;
+    width: 100%;
+    margin-bottom: 15px;
+    font-weight: 400;
+}
+.pipeline-stage-mapping table h3,
+.pipeline-stage-mapping table label {
+    color: #000;
+}
+.pipeline-stage-mapping table tr > th {
+    text-align: left;
+}
+.pipeline-stage-mapping table tr > td {
+    width: 50%;
+}
+.pipeline-stage-mapping hr {
+    margin-top: 20px;
+}
+.pipeline-stage-mapping .mapping_save_auth {
+    display: flex;
+    justify-content: flex-start;
+    gap: 20px;
+    margin-top: 25px;
+}
+.pipeline-stage-mapping .mapping_save_auth button,
+.pipeline-stage-mapping .mapping_save_auth .block-footer .action-add,
+.reset-hubspot-data {
+    background-color: #eb5202 !important;
+    border-color: #eb5202 !important;
+    color: #fff !important;
+    font-size: initial;
+    padding: 15px;
+}
+.pipeline-stage-mapping .mapping_save_auth button:focus,
+.pipeline-stage-mapping .mapping_save_auth .block-footer .action-add:focus {
+    outline: none;
+}
+.pipeline-stage-mapping .mapping_save_auth button:hover,
+.pipeline-stage-mapping .mapping_save_auth .block-footer .action-add:hover,
+.reset-hubspot-data:hover {
+    background-color: #ba4000 !important;
+}
+.hubDashboard_content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.hubDashboard_content:before,
+.hubDashboard_content:after {
+    content: unset;
+}
+.hubDashboard_content .ver {
+    color: #05ac55;
+    font-weight: bold;
+    font-style: italic;
+}
+#hub_integration_hub_fields_mapping .comment {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    padding: 10px 30px;
+    border-radius: 5px;
+    margin: 2rem 0;
+}
+
+.action-guest {
+    background-color: #4CC790;
+    border-color: #4CC790;
+    color: #ffffff;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+    border-radius: 30px;
+}
+.action-guest:hover {
+    background-color: #ba4000;
+    color: #ffffff;
+}
+.action-twoway-sync {
+    background-color: #ffa500;
+    border-color: #ffa500;
+    color: #ffffff;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+    border-radius: 30px;
+}
+.action-twoway-sync:hover {
+    background-color: #ba4000;
+    color: #ffffff;
+}
+.action-field-mapping {
+    background-color: #0000ff;
+    border-color: #0000ff;
+    color: #ffffff;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+    border-radius: 30px;
+}
+.action-field-mapping:hover {
+    background-color: #ba4000;
+    color: #ffffff;
+}
+.action-customisation {
+    background-color: #c71585;
+    border-color: #c71585;
+    color: #ffffff;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+    border-radius: 30px;
+}
+.action-customisation:hover {
+    background-color: #ba4000;
+    color: #ffffff;
+}
+
+#details_tabs_add_ons_content .bottom-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 15px;
+    text-align: left;
+}
+#details_tabs_add_ons_content .bottom-content .item-title {
+    margin-bottom: 0;
+}
+#details_tabs_add_ons_content .admin_hub_dashboard .admin__page-section-item .connection-status {
+    flex-direction: column;
+}
+#details_tabs_add_ons_content .admin_hub_dashboard .admin__page-section-item .connection-status .icon {
+    margin-bottom: 10px;
+}
+#details_tabs_add_ons_content .admin_hub_dashboard .admin__page-section-item .connection-status:hover .icon i {
+    transform: rotate(360deg);
+}
+.hubDashboard_content .title {
+    font-size: 14px;
+}
+.add-on_button {
+    padding:10px;
+    display:block;
+    text-align: center;
+    white-space: nowrap;
+}
+.add-on_button:hover {
+    text-decoration: none;
+}

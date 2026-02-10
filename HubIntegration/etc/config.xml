@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Makewebbetter
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the End User License Agreement (EULA)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://makewebbetter.com/license-agreement.txt
+ *
+ * @category    Makewebbetter
+ * @package     Makewebbetter_HubIntegration
+ * @author      Makewebbetter Core Team <connect@makewebbetter.com>
+ * @copyright   Copyright Makewebbetter (http://makewebbetter.com/)
+ * @license     https://makewebbetter.com/license-agreement.txt
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+    	<hub_integration>
+    		<hubspot_integration>
+				<enable>1</enable>
+				<abandoned_cart_time>30</abandoned_cart_time>
+			</hubspot_integration>
+            <export_settings>
+                <cron_time>*/60 */1 * * *</cron_time>
+				<delete_error_log>30</delete_error_log>
+            </export_settings>
+			<export_old_data>
+				<import_old_data>1</import_old_data>
+			</export_old_data>
+			<rfm_settings>
+				<rfm_fields>{"rfm_at_5":{"recency":"30","frequency":"20","monetary":"1000"},"from_rfm_4":{"recency":"31","frequency":"10","monetary":"750"},"to_rfm_4":{"recency":"90","frequency":"20","monetary":"1000"},"from_rfm_3":{"recency":"91","frequency":"5","monetary":"500"},"to_rfm_3":{"recency":"180","frequency":"10","monetary":"750"},"from_rfm_2":{"recency":"181","frequency":"2","monetary":"250"},"to_rfm_2":{"recency":"365","frequency":"5","monetary":"500"},"rfm_at_1":{"recency":"365","frequency":"2","monetary":"250"}}
+				</rfm_fields>
+			</rfm_settings>
+		</hub_integration>
+    </default>
+</config>

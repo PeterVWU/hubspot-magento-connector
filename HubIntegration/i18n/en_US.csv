@@ -1,0 +1,104 @@
+Re-Authenticate,Re-Authenticate
+Authenticate,Authenticate
+"Please enable HubSpot Extension.","Please enable HubSpot Extension."
+"Login Customer's Abandoned Cart(s)","Login Customer's Abandoned Cart(s)"
+"Please click on 'Export' button to start Export Process.","Please click on 'Export' button to start Export Process."
+"Export started on %1 and completed on %2.","Export started on %1 and completed on %2."
+"Export started on %1","Export started on %1"
+"Export Process will be done through cron, to see progress please reload the page.","Export Process will be done through cron, to see progress please reload the page."
+"Cron Status","Cron Status"
+"HubSpot Error Log(s)","HubSpot Error Log(s)"
+"Error Log(s)","Error Log(s)"
+"%1 Error Log(s) have been deleted.","%1 Error Log(s) have been deleted."
+"%1 Customer(s) have been exported to HubSpot.","%1 Customer(s) have been exported to HubSpot."
+"%1 Order(s) have been exported to HubSpot.","%1 Order(s) have been exported to HubSpot."
+"%1 Product(s) have been exported to HubSpot.","%1 Product(s) have been exported to HubSpot."
+"%1 Cart(s) have been exported to HubSpot.","%1 Cart(s) have been exported to HubSpot."
+Pending,Pending
+Running,Running
+Error,Error
+Missed,Missed
+Success,Success
+"Once In A Day","Once In A Day"
+"Twice A Day","Twice A Day"
+"Four Times A Day","Four Times A Day"
+"Every Hour","Every Hour"
+"Every 5 Min","Every 5 Min"
+"Please Select","Please Select"
+"Export Old Data","Export Old Data"
+"Export To HubSpot","Export To HubSpot"
+"Delete Error Log","Delete Error Log"
+"Include Resolved Error","Include Resolved Error"
+Yes,Yes
+No,No
+"Error Type","Error Type"
+"Object Type","Object Type"
+Limit,Limit
+"Please enter limit between 1 - 200","Please enter limit between 1 - 200"
+"%1 records found","%1 records found"
+Back,Back
+"Apply Filter","Apply Filter"
+Reset,Reset
+Previous,Previous
+Next,Next
+"External Object Id","External Object Id"
+"Changed At","Changed At"
+"Errored At","Errored At"
+Type,Type
+Status,Status
+Details,Details
+"No HubSpot Error Log Found","No HubSpot Error Log Found"
+"Please enter a valid number in this field.","Please enter a valid number in this field."
+"Please enter number between 1 - 200.","Please enter number between 1 - 200."
+"Please Authorize first before export. <a href=""%1"">Click Here</a> for Authorization.","Please Authorize first before export. <a href=""%1"">Click Here</a> for Authorization."
+Start,Start
+Products,Products
+Contacts,Contacts
+Deals,Deals
+"Line Items","Line Items"
+"Connected To Hubspot","Connected To Hubspot"
+"Installation in progress, please do not close window.","Installation in progress, please do not close window."
+"Group & Property","Group & Property"
+"Contact Lists","Contact Lists"
+"Work Flows","Work Flows"
+"Not Connected To Hubspot","Not Connected To Hubspot"
+"Connection Failed","Connection Failed"
+Confirmation,Confirmation
+"You also want to export Abandoned Cart(s) ?","You also want to export Abandoned Cart(s) ?"
+Makewebbetter,Makewebbetter
+HubSpot,HubSpot
+"General Configuration","General Configuration"
+"Enable HubSpot Integration","Enable HubSpot Integration"
+Authorize,Authorize
+"Abandoned Cart","Abandoned Cart"
+"Cron Configuration","Cron Configuration"
+"Select Data Sync Cron Time","Select Data Sync Cron Time"
+"Auto Delete Error Log After","Auto Delete Error Log After"
+"RFM Settings","RFM Settings"
+"RFM Fields","RFM Fields"
+"All Store Views","All Store Views"
+"Purchase Point","Purchase Point"
+"Purchasing Point","Purchasing Point"
+"Cart Created At","Cart Created At"
+"Customer Firstname","Customer Firstname"
+"Customer Lastname","Customer Lastname"
+"Customer Email","Customer Email"
+"Grand Total (Base)","Grand Total (Base)"
+"Grand Total (Purchasing)","Grand Total (Purchasing)"
+Subtotal,Subtotal
+"Created At","Created At"
+Jobs,Jobs
+Message,Message
+"Scheduled At","Scheduled At"
+"Executed At","Executed At"
+"Finished At","Finished At"
+"HubSpot Error Log","HubSpot Error Log"
+Delete,Delete
+"Are you sure you want to delete selected items?","Are you sure you want to delete selected items?"
+"Delete items","Delete items"
+"Log Created At","Log Created At"
+"Request Url","Request Url"
+"Request Type","Request Type"
+"Request Param(s)","Request Param(s)"
+"Response Code","Response Code"
+Response,Response

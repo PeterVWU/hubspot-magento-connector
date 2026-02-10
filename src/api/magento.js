@@ -43,7 +43,7 @@ function buildSearchCriteria(filters, pageSize, currentPage, sortField = 'update
   return params.toString();
 }
 
-async function fetchAllPages(endpoint, filters, entityName) {
+async function fetchAllPages(endpoint, filters, entityName, maxRecords = 0) {
   const pageSize = config.magento.pageSize;
   let currentPage = 1;
   let allItems = [];
@@ -65,6 +65,12 @@ async function fetchAllPages(endpoint, filters, entityName) {
       totalCount,
     });
 
+    if (maxRecords > 0 && allItems.length >= maxRecords) {
+      allItems = allItems.slice(0, maxRecords);
+      logger.info(`Reached max records limit for ${entityName}`, { maxRecords, totalAvailable: totalCount });
+      break;
+    }
+
     currentPage++;
   } while (allItems.length < totalCount);
 
@@ -79,8 +85,8 @@ export async function getCustomersUpdatedSince(since) {
     { field: 'updated_at', value: sinceStr, condition: 'gteq', group: 0, filterIdx: 0 },
   ];
 
-  // Fetch all customers updated since the given time
-  const customers = await fetchAllPages('/customers/search', filters, 'customers');
+  // Fetch customers updated since the given time
+  const customers = await fetchAllPages('/customers/search', filters, 'customers', config.magento.maxRecordsPerSync);
 
   // Client-side filter: exclude customers assigned to specific sales reps
   if (excludedIds.length > 0) {
@@ -104,7 +110,7 @@ export async function getProductsUpdatedSince(since) {
   const filters = [
     { field: 'updated_at', value: sinceStr, condition: 'gteq', group: 0, filterIdx: 0 },
   ];
-  return fetchAllPages('/products', filters, 'products');
+  return fetchAllPages('/products', filters, 'products', config.magento.maxRecordsPerSync);
 }
 
 export async function getOrderById(orderId) {
@@ -118,5 +124,5 @@ export async function getOrdersUpdatedSince(since) {
   const filters = [
     { field: 'updated_at', value: sinceStr, condition: 'gteq', group: 0, filterIdx: 0 },
   ];
-  return fetchAllPages('/orders', filters, 'orders');
+  return fetchAllPages('/orders', filters, 'orders', config.magento.maxRecordsPerSync);
 }

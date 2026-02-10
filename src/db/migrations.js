@@ -35,7 +35,8 @@ export async function runMigrations() {
         max_attempts INT NOT NULL DEFAULT 5,
         next_retry_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(entity_type, magento_id)
       );
 
       CREATE INDEX IF NOT EXISTS idx_retry_queue_pending

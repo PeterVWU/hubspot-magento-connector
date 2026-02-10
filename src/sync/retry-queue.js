@@ -1,7 +1,9 @@
 import * as db from '../db/sync-state.js';
+import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { mapProductToHubspot } from '../mappers/product.mapper.js';
+import { syncSingleOrder } from './orders.js';
 import logger from '../utils/logger.js';
 
 export async function processRetryQueue(runId) {
@@ -78,12 +80,9 @@ async function retryItem(item) {
       break;
     }
     case 'order': {
-      // Orders are complex - log for manual review rather than blind retry
-      logger.warn('Order retry requires manual review', {
-        magentoId: item.magento_id,
-        error: item.error_message,
-      });
-      throw new Error('Order retries not yet automated - requires manual review');
+      const order = await magento.getOrderById(item.magento_id);
+      await syncSingleOrder(order, 'retry');
+      break;
     }
     default:
       logger.warn('Unknown entity type in retry queue', { entityType: item.entity_type });

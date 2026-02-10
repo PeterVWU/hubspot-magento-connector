@@ -46,7 +46,9 @@ export async function getHubspotIdsBatch(entityType, magentoIds) {
 export async function addToRetryQueue(entityType, magentoId, operation, payload, errorMessage) {
   await pool.query(
     `INSERT INTO sync_retry_queue (entity_type, magento_id, operation, payload, error_message, next_retry_at)
-     VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '1 minute')`,
+     VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '1 minute')
+     ON CONFLICT (entity_type, magento_id)
+     DO UPDATE SET payload = $4, error_message = $5, updated_at = NOW()`,
     [entityType, String(magentoId), operation, JSON.stringify(payload), errorMessage],
   );
 }

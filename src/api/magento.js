@@ -107,6 +107,12 @@ export async function getProductsUpdatedSince(since) {
   return fetchAllPages('/products', filters, 'products');
 }
 
+export async function getOrderById(orderId) {
+  logger.debug('Fetching single order', { orderId });
+  const { data } = await client.get(`/orders/${orderId}`);
+  return data;
+}
+
 export async function getOrdersUpdatedSince(since) {
   const sinceStr = since.toISOString().replace('T', ' ').replace('Z', '');
   const filters = [

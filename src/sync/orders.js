@@ -6,9 +6,12 @@ import logger from '../utils/logger.js';
 
 let pipelineId = null;
 let stageMap = null;
+let pipelineFetchedAt = 0;
+const PIPELINE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 async function ensurePipeline() {
-  if (pipelineId && stageMap) return;
+  const now = Date.now();
+  if (pipelineId && stageMap && (now - pipelineFetchedAt) < PIPELINE_CACHE_TTL_MS) return;
 
   const pipelines = await hubspot.getDealPipelines();
   const ecommPipeline = pipelines.find(p => p.label === 'Ecommerce Pipeline')
@@ -20,6 +23,7 @@ async function ensurePipeline() {
   for (const stage of ecommPipeline.stages || []) {
     stageMap[stage.label] = stage.id;
   }
+  pipelineFetchedAt = now;
 
   logger.info('Using deal pipeline', { pipelineId, stages: Object.keys(stageMap) });
 }
@@ -41,8 +45,6 @@ export async function syncOrders(since, runId) {
       const existingHubspotId = await db.getHubspotId('order', order.entity_id);
       await syncSingleOrder(order, runId);
 
-      // Check after sync to determine if it was a create or update
-      const hubspotIdAfter = await db.getHubspotId('order', order.entity_id);
       if (existingHubspotId) {
         updated++;
       } else {
@@ -65,7 +67,7 @@ export async function syncOrders(since, runId) {
   return { created, updated, failed };
 }
 
-async function syncSingleOrder(order, runId) {
+export async function syncSingleOrder(order, runId) {
   const dealProperties = mapOrderToDeal(order, pipelineId, stageMap);
 
   // Check if deal already exists in our mapping
@@ -116,23 +118,48 @@ async function syncLineItems(order, dealHubspotId, runId) {
   const productIds = items.map(i => String(i.product_id));
   const productMappings = await db.getHubspotIdsBatch('product', productIds);
 
-  const lineItemInputs = items.map((item) => {
+  // Check which line items already exist in HubSpot (avoid duplicates on re-sync)
+  const itemIds = items.map(i => String(i.item_id));
+  const existingLineItems = await db.getHubspotIdsBatch('line_item', itemIds);
+
+  const toCreate = [];
+  const toUpdate = [];
+
+  for (const item of items) {
     const hubspotProductId = productMappings.get(String(item.product_id));
     const properties = mapOrderItemToLineItem(item, hubspotProductId);
-    return {
-      properties,
-      associations: [{
-        to: { id: dealHubspotId },
-        types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 20 }],
-      }],
-    };
-  });
+    const existingHubspotId = existingLineItems.get(String(item.item_id));
 
-  const results = await hubspot.batchCreateLineItems(lineItemInputs);
-  logger.debug('Created line items', { orderId: order.increment_id, count: results.length, runId });
+    if (existingHubspotId) {
+      toUpdate.push({ id: existingHubspotId, properties });
+    } else {
+      toCreate.push({
+        item,
+        input: {
+          properties,
+          associations: [{
+            to: { id: dealHubspotId },
+            types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 20 }],
+          }],
+        },
+      });
+    }
+  }
 
-  // Store line item mappings
-  for (let i = 0; i < results.length && i < items.length; i++) {
-    await db.upsertMapping('line_item', items[i].item_id, results[i].id);
+  // Update existing line items
+  if (toUpdate.length) {
+    await hubspot.batchUpdateLineItems(toUpdate);
+    logger.debug('Updated line items', { orderId: order.increment_id, count: toUpdate.length, runId });
+  }
+
+  // Create new line items
+  if (toCreate.length) {
+    const results = await hubspot.batchCreateLineItems(toCreate.map(t => t.input));
+    logger.debug('Created line items', { orderId: order.increment_id, count: results.length, runId });
+
+    // Store line item mappings
+    for (let i = 0; i < results.length && i < toCreate.length; i++) {
+      await db.upsertMapping('line_item', toCreate[i].item.item_id, results[i].id);
+    }
   }
 }

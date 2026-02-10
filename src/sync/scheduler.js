@@ -35,10 +35,22 @@ export async function runFullSync() {
     const orderSince = await db.getLastSyncedAt('order');
     const orderResult = await syncOrders(orderSince, runId);
 
-    // 4. Update sync timestamps
-    await db.updateLastSyncedAt('product', syncStart);
-    await db.updateLastSyncedAt('customer', syncStart);
-    await db.updateLastSyncedAt('order', syncStart);
+    // 4. Update sync timestamps only for entity types with zero failures
+    if (productResult.failed === 0) {
+      await db.updateLastSyncedAt('product', syncStart);
+    } else {
+      logger.warn('Skipping product timestamp update due to failures', { failed: productResult.failed });
+    }
+    if (customerResult.failed === 0) {
+      await db.updateLastSyncedAt('customer', syncStart);
+    } else {
+      logger.warn('Skipping customer timestamp update due to failures', { failed: customerResult.failed });
+    }
+    if (orderResult.failed === 0) {
+      await db.updateLastSyncedAt('order', syncStart);
+    } else {
+      logger.warn('Skipping order timestamp update due to failures', { failed: orderResult.failed });
+    }
 
     // 5. Process retry queue
     await processRetryQueue(runId);

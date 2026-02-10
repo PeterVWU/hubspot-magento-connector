@@ -1,5 +1,6 @@
 import { config } from './config/index.js';
 import { runMigrations } from './db/migrations.js';
+import pool from './db/index.js';
 import { startScheduler, runFullSync } from './sync/scheduler.js';
 import * as hubspot from './api/hubspot.js';
 import logger from './utils/logger.js';
@@ -25,6 +26,17 @@ async function main() {
 
   logger.info('Sync service running. Press Ctrl+C to stop.');
 }
+
+// Graceful shutdown
+async function shutdown(signal) {
+  logger.info(`Received ${signal}, shutting down gracefully...`);
+  await pool.end();
+  logger.info('Database pool closed. Exiting.');
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 main().catch((err) => {
   logger.error('Fatal error', { error: err.message, stack: err.stack });

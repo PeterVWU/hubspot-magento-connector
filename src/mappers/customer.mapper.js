@@ -17,5 +17,10 @@ export function mapCustomerToContact(customer) {
     if (billingAddress.country_id) properties.country = billingAddress.country_id;
   }
 
+  if (customer.created_at) {
+    const d = new Date(customer.created_at);
+    properties.account_created_date = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+
   return properties;
 }

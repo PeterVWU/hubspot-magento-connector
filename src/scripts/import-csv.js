@@ -38,6 +38,7 @@ async function importCustomers(rows) {
         email: row.email,
         firstname: row.firstname,
         lastname: row.lastname,
+        created_at: row.created_at || null,
         addresses: [{
           default_billing: true,
           company: row.company || '',

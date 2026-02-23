@@ -146,6 +146,26 @@ export async function getDealPipelines() {
 
 // --- Properties ---
 
+export async function createContactProperty(name, label, type = 'string', fieldType = 'text') {
+  await rateLimitDelay();
+  try {
+    const { data } = await client.post('/crm/v3/properties/contacts', {
+      name,
+      label,
+      type,
+      fieldType,
+      groupName: 'contactinformation',
+    });
+    return data;
+  } catch (err) {
+    if (err.response?.status === 409) {
+      logger.debug(`Contact property "${name}" already exists`);
+      return null;
+    }
+    throw err;
+  }
+}
+
 export async function createDealProperty(name, label, type = 'string', fieldType = 'text') {
   await rateLimitDelay();
   try {

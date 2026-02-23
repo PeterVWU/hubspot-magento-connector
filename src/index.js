@@ -14,7 +14,8 @@ async function main() {
   // Run database migrations
   await runMigrations();
 
-  // Ensure required HubSpot deal properties exist
+  // Ensure required HubSpot custom properties exist
+  await hubspot.createContactProperty('account_created_date', 'Account Created Date', 'date', 'date');
   await hubspot.createDealProperty('order_number', 'Order Number');
 
   // Run initial sync immediately

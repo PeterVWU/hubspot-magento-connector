@@ -18,6 +18,7 @@ All files go in `data/` at the project root.
 | email | customer_entity.email |
 | firstname | customer_entity.firstname |
 | lastname | customer_entity.lastname |
+| created_at | customer_entity.created_at |
 | company | customer_address_entity.company |
 | telephone | customer_address_entity.telephone |
 | street | customer_address_entity.street |
@@ -59,6 +60,7 @@ SELECT
     c.email,
     c.firstname,
     c.lastname,
+    c.created_at,
     addr.company,
     addr.telephone,
     addr.street,

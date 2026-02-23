@@ -19,15 +19,26 @@ const CUSTOMERS_FILE = 'data/customers.csv';
 const ORDERS_FILE    = 'data/orders.csv';
 const ITEMS_FILE     = 'data/order_items.csv';
 
+function progress(label, current, total, stats) {
+  const pct = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
+  const bar = Math.floor((current / total) * 20);
+  const filled = '█'.repeat(bar) + '░'.repeat(20 - bar);
+  const line = `${label}: [${filled}] ${current}/${total} (${pct}%) | created: ${stats.created} updated: ${stats.updated} failed: ${stats.failed}`;
+  process.stdout.write(`\r${line}  `);
+}
+
 // --- Customer sync ---
 
 async function importCustomers(rows) {
   let created = 0, updated = 0, skipped = 0, failed = 0;
+  const total = rows.length;
+  let i = 0;
 
   for (const row of rows) {
+    i++;
     if (!row.email) {
       skipped++;
-      logger.warn('Skipping customer row without email', { entity_id: row.entity_id });
+      progress('Customers', i, total, { created, updated, failed });
       continue;
     }
 
@@ -72,15 +83,15 @@ async function importCustomers(rows) {
         }
       }
 
-      if ((created + updated) % 100 === 0) {
-        logger.info(`Customer progress: ${created} created, ${updated} updated, ${failed} failed`);
-      }
+      progress('Customers', i, total, { created, updated, failed });
     } catch (err) {
       failed++;
-      logger.error('Failed to import customer', { entity_id: row.entity_id, email: row.email, error: err.message });
+      logger.error('\nFailed to import customer', { entity_id: row.entity_id, email: row.email, error: err.message });
+      progress('Customers', i, total, { created, updated, failed });
     }
   }
 
+  process.stdout.write('\n');
   return { created, updated, skipped, failed };
 }
 
@@ -96,8 +107,11 @@ async function importOrders(orderRows, itemRows) {
   }
 
   let created = 0, updated = 0, failed = 0;
+  const total = orderRows.length;
+  let i = 0;
 
   for (const row of orderRows) {
+    i++;
     try {
       // Reshape CSV row into the object shape syncSingleOrder expects
       const order = {
@@ -123,16 +137,15 @@ async function importOrders(orderRows, itemRows) {
       const existed = !!(await db.getHubspotId('order', row.entity_id));
       await syncSingleOrder(order, 'csv-import');
       existed ? updated++ : created++;
-
-      if ((created + updated) % 100 === 0) {
-        logger.info(`Order progress: ${created} created, ${updated} updated, ${failed} failed`);
-      }
+      progress('Orders', i, total, { created, updated, failed });
     } catch (err) {
       failed++;
-      logger.error('Failed to import order', { entity_id: row.entity_id, increment_id: row.increment_id, error: err.message });
+      logger.error('\nFailed to import order', { entity_id: row.entity_id, increment_id: row.increment_id, error: err.message });
+      progress('Orders', i, total, { created, updated, failed });
     }
   }
 
+  process.stdout.write('\n');
   return { created, updated, failed };
 }
 

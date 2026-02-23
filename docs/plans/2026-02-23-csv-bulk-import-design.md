@@ -35,6 +35,7 @@ All files go in `data/` at the project root.
 | grand_total | sales_order.grand_total |
 | status | sales_order.status |
 | order_currency_code | sales_order.order_currency_code |
+| created_at | sales_order.created_at |
 
 ### `data/order_items.csv`
 | Column | Source |
@@ -84,7 +85,8 @@ SELECT
     o.customer_id,
     o.grand_total,
     o.status,
-    o.order_currency_code
+    o.order_currency_code,
+    o.created_at
 FROM sales_order o
 INNER JOIN customer_entity c ON c.entity_id = o.customer_id
 LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320

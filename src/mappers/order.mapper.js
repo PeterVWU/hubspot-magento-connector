@@ -18,7 +18,7 @@ export function mapOrderToDeal(order, pipelineId, stageMap) {
     pipeline: pipelineId,
     dealstage: stageId || Object.values(stageMap)[0],
     order_number: String(order.increment_id),
-    closedate: order.created_at ? new Date(order.created_at).toISOString() : undefined,
+    closedate: order.created_at ? new Date(order.created_at).getTime() : undefined,
   };
 }
 

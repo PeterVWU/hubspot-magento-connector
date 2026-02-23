@@ -106,6 +106,7 @@ async function importOrders(orderRows, itemRows) {
         grand_total: row.grand_total,
         status: row.status,
         order_currency_code: row.order_currency_code || 'USD',
+        created_at: row.created_at || null,
         items: (itemsByOrderId.get(row.entity_id) || []).map(i => ({
           item_id: i.item_id,
           product_id: i.product_id,

@@ -68,6 +68,8 @@ export async function syncOrders(since, runId) {
 }
 
 export async function syncSingleOrder(order, runId) {
+  await ensurePipeline();
+
   const dealProperties = mapOrderToDeal(order, pipelineId, stageMap);
 
   // Check if deal already exists in our mapping
@@ -77,7 +79,7 @@ export async function syncSingleOrder(order, runId) {
     await hubspot.updateDeal(dealHubspotId, dealProperties);
     logger.debug('Updated deal', { orderId: order.increment_id, hubspotId: dealHubspotId, runId });
   } else {
-    // Search HubSpot by order number
+    // Search HubSpot by order number in case it exists but we don't have a mapping
     const existing = await hubspot.searchDealByOrderNumber(String(order.increment_id));
     if (existing) {
       dealHubspotId = existing.id;
@@ -92,7 +94,7 @@ export async function syncSingleOrder(order, runId) {
     }
   }
 
-  // Associate contact to deal
+  // Associate contact to deal (type 3 = deal → contact)
   const contactHubspotId = order.customer_id
     ? await db.getHubspotId('customer', order.customer_id)
     : null;
@@ -152,12 +154,11 @@ async function syncLineItems(order, dealHubspotId, runId) {
     logger.debug('Updated line items', { orderId: order.increment_id, count: toUpdate.length, runId });
   }
 
-  // Create new line items
+  // Create new line items (inline association to deal via type 20)
   if (toCreate.length) {
     const results = await hubspot.batchCreateLineItems(toCreate.map(t => t.input));
     logger.debug('Created line items', { orderId: order.increment_id, count: results.length, runId });
 
-    // Store line item mappings
     for (let i = 0; i < results.length && i < toCreate.length; i++) {
       await db.upsertMapping('line_item', toCreate[i].item.item_id, results[i].id);
     }

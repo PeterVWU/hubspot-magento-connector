@@ -136,6 +136,36 @@ export async function updateDeal(hubspotId, properties) {
   return data;
 }
 
+// --- Pipeline ---
+
+export async function getDealPipelines() {
+  await rateLimitDelay();
+  const { data } = await client.get('/crm/v3/pipelines/deals');
+  return data.results || [];
+}
+
+// --- Properties ---
+
+export async function createDealProperty(name, label, type = 'string', fieldType = 'text') {
+  await rateLimitDelay();
+  try {
+    const { data } = await client.post('/crm/v3/properties/deals', {
+      name,
+      label,
+      type,
+      fieldType,
+      groupName: 'dealinformation',
+    });
+    return data;
+  } catch (err) {
+    if (err.response?.status === 409) {
+      logger.debug(`Deal property "${name}" already exists`);
+      return null;
+    }
+    throw err;
+  }
+}
+
 // --- Batch Operations ---
 
 export async function batchCreateLineItems(inputs) {
@@ -181,32 +211,3 @@ export async function batchCreateAssociations(fromType, toType, inputs) {
   });
 }
 
-// --- Pipeline ---
-
-export async function getDealPipelines() {
-  await rateLimitDelay();
-  const { data } = await client.get('/crm/v3/pipelines/deals');
-  return data.results || [];
-}
-
-// --- Properties ---
-
-export async function createDealProperty(name, label, type = 'string', fieldType = 'text') {
-  await rateLimitDelay();
-  try {
-    const { data } = await client.post('/crm/v3/properties/deals', {
-      name,
-      label,
-      type,
-      fieldType,
-      groupName: 'dealinformation',
-    });
-    return data;
-  } catch (err) {
-    if (err.response?.status === 409) {
-      logger.debug(`Deal property "${name}" already exists`);
-      return null;
-    }
-    throw err;
-  }
-}

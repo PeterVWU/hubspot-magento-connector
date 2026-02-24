@@ -51,13 +51,11 @@ All files go in `data/` at the project root.
 | price | sales_order_item.price |
 | product_type | sales_order_item.product_type |
 
-## SQL Queries — Year-by-Year Export
+## SQL Queries
 
-Run each query once per year, export to a file named `customers_YYYY.csv`, `orders_YYYY.csv`, `order_items_YYYY.csv`. The import script automatically reads all matching files and merges them.
+Export via `gcloud sql export csv` — runs server-side, writes directly to GCS, no row limit. Files have no header row; column names are defined in the import script.
 
-Replace `YYYY` with the target year (e.g. 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025).
-
-### customers_YYYY.sql
+### customers.sql
 ```sql
 SELECT
     c.entity_id,
@@ -80,12 +78,10 @@ WHERE
     c.group_id != 5
     AND (fraud.value IS NULL OR fraud.value != 1)
     AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
-    AND c.created_at >= 'YYYY-01-01'
-    AND c.created_at <  'YYYY+1-01-01'
 ORDER BY c.entity_id;
 ```
 
-### orders_YYYY.sql
+### orders.sql
 ```sql
 SELECT
     o.entity_id,
@@ -103,12 +99,10 @@ WHERE
     c.group_id != 5
     AND (fraud.value IS NULL OR fraud.value != 1)
     AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
-    AND o.created_at >= 'YYYY-01-01'
-    AND o.created_at <  'YYYY+1-01-01'
 ORDER BY o.entity_id;
 ```
 
-### order_items_YYYY.sql
+### order_items.sql
 ```sql
 SELECT
     oi.item_id,
@@ -122,40 +116,26 @@ SELECT
     oi.product_type
 FROM sales_order_item oi
 INNER JOIN sales_order o ON o.entity_id = oi.order_id
-INNER JOIN customer_entity c ON c.entity_id = o.customer_id
-LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320
-LEFT JOIN customer_entity_int rep ON rep.entity_id = c.entity_id AND rep.attribute_id = 351
-WHERE
-    c.group_id != 5
-    AND (fraud.value IS NULL OR fraud.value != 1)
-    AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
-    AND o.created_at >= 'YYYY-01-01'
-    AND o.created_at <  'YYYY+1-01-01'
 ORDER BY oi.order_id, oi.item_id;
 ```
 
-## File Naming
+> Note: order_items does not need fraud/salesrep filters — the import script only processes items whose order_id appears in orders.csv, so excluded customers' items are automatically ignored.
 
-Place all exported files in `data/`:
+## Export Commands
 
+```bash
+gcloud sql export csv INSTANCE gs://YOUR_BUCKET/hubspot-import/customers.csv \
+  --database=DB --query="<customers.sql above>"
+
+gcloud sql export csv INSTANCE gs://YOUR_BUCKET/hubspot-import/orders.csv \
+  --database=DB --query="<orders.sql above>"
+
+gcloud sql export csv INSTANCE gs://YOUR_BUCKET/hubspot-import/order_items.csv \
+  --database=DB --query="<order_items.sql above>"
+
+# Download all three to data/
+gsutil cp "gs://YOUR_BUCKET/hubspot-import/*.csv" data/
 ```
-data/customers_2018.csv
-data/customers_2019.csv
-...
-data/customers_2025.csv
-
-data/orders_2018.csv
-...
-data/orders_2025.csv
-
-data/order_items_2018.csv
-...
-data/order_items_2025.csv
-```
-
-The import script matches by prefix (`customers`, `orders`, `order_items`) so any files starting with those names and ending in `.csv` will be picked up automatically, sorted alphabetically before merging.
-
-A single `data/customers.csv` (no year suffix) also works if you have a complete export.
 
 ## Import Script
 

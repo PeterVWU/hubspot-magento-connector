@@ -6,7 +6,7 @@
  */
 
 import 'dotenv/config';
-import { readCsv } from '../utils/csv.js';
+import { readCsvGlob } from '../utils/csv.js';
 import { runMigrations } from '../db/migrations.js';
 import pool from '../db/index.js';
 import * as hubspot from '../api/hubspot.js';
@@ -15,9 +15,10 @@ import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
 import logger from '../utils/logger.js';
 
-const CUSTOMERS_FILE = 'data/customers.csv';
-const ORDERS_FILE    = 'data/orders.csv';
-const ITEMS_FILE     = 'data/order_items.csv';
+// Matches data/customers.csv OR data/customers_2020.csv, data/customers_2021.csv, etc.
+const CUSTOMERS_PREFIX = 'data/customers';
+const ORDERS_PREFIX    = 'data/orders';
+const ITEMS_PREFIX     = 'data/order_items';
 
 function progress(label, current, total, stats) {
   const pct = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
@@ -155,12 +156,19 @@ async function run() {
   await runMigrations();
 
   logger.info('Reading CSV files...');
-  const [customerRows, orderRows, itemRows] = await Promise.all([
-    readCsv(CUSTOMERS_FILE),
-    readCsv(ORDERS_FILE),
-    readCsv(ITEMS_FILE),
+  const [
+    { rows: customerRows, files: custFiles },
+    { rows: orderRows,    files: orderFiles },
+    { rows: itemRows,     files: itemFiles },
+  ] = await Promise.all([
+    readCsvGlob(CUSTOMERS_PREFIX),
+    readCsvGlob(ORDERS_PREFIX),
+    readCsvGlob(ITEMS_PREFIX),
   ]);
 
+  logger.info('Customer files:', custFiles);
+  logger.info('Order files:   ', orderFiles);
+  logger.info('Item files:    ', itemFiles);
   logger.info(`Loaded: ${customerRows.length} customers, ${orderRows.length} orders, ${itemRows.length} order items`);
 
   logger.info('--- Importing customers ---');

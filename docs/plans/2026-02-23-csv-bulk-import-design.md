@@ -51,9 +51,13 @@ All files go in `data/` at the project root.
 | price | sales_order_item.price |
 | product_type | sales_order_item.product_type |
 
-## SQL Queries
+## SQL Queries — Year-by-Year Export
 
-### customers.sql
+Run each query once per year, export to a file named `customers_YYYY.csv`, `orders_YYYY.csv`, `order_items_YYYY.csv`. The import script automatically reads all matching files and merges them.
+
+Replace `YYYY` with the target year (e.g. 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025).
+
+### customers_YYYY.sql
 ```sql
 SELECT
     c.entity_id,
@@ -76,10 +80,12 @@ WHERE
     c.group_id != 5
     AND (fraud.value IS NULL OR fraud.value != 1)
     AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
+    AND c.created_at >= 'YYYY-01-01'
+    AND c.created_at <  'YYYY+1-01-01'
 ORDER BY c.entity_id;
 ```
 
-### orders.sql
+### orders_YYYY.sql
 ```sql
 SELECT
     o.entity_id,
@@ -97,10 +103,12 @@ WHERE
     c.group_id != 5
     AND (fraud.value IS NULL OR fraud.value != 1)
     AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
+    AND o.created_at >= 'YYYY-01-01'
+    AND o.created_at <  'YYYY+1-01-01'
 ORDER BY o.entity_id;
 ```
 
-### order_items.sql
+### order_items_YYYY.sql
 ```sql
 SELECT
     oi.item_id,
@@ -121,8 +129,33 @@ WHERE
     c.group_id != 5
     AND (fraud.value IS NULL OR fraud.value != 1)
     AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
+    AND o.created_at >= 'YYYY-01-01'
+    AND o.created_at <  'YYYY+1-01-01'
 ORDER BY oi.order_id, oi.item_id;
 ```
+
+## File Naming
+
+Place all exported files in `data/`:
+
+```
+data/customers_2018.csv
+data/customers_2019.csv
+...
+data/customers_2025.csv
+
+data/orders_2018.csv
+...
+data/orders_2025.csv
+
+data/order_items_2018.csv
+...
+data/order_items_2025.csv
+```
+
+The import script matches by prefix (`customers`, `orders`, `order_items`) so any files starting with those names and ending in `.csv` will be picked up automatically, sorted alphabetically before merging.
+
+A single `data/customers.csv` (no year suffix) also works if you have a complete export.
 
 ## Import Script
 
@@ -130,9 +163,9 @@ ORDER BY oi.order_id, oi.item_id;
 
 **Flow:**
 1. Run DB migrations
-2. Parse `data/customers.csv` — for each row, reshape to match Magento API customer object shape, run same upsert logic as live sync (check DB mapping → search HubSpot by email → create/update)
-3. Parse `data/orders.csv` + `data/order_items.csv` — group items by order_id, reshape each order+items to Magento API object shape, call existing `syncSingleOrder()`
-4. Log running totals (processed / created / updated / failed) to console
+2. Find all `data/customers*.csv` files, merge rows, run customer upsert logic for each row
+3. Find all `data/orders*.csv` + `data/order_items*.csv` files, merge rows, group items by order_id, call `syncSingleOrder()` for each order
+4. Log running totals (processed / created / updated / failed) to console with live progress bar
 5. Print final summary
 
 **No retry queue** — this is a one-time operation. Failures are logged and can be re-run; the script is fully idempotent via the existing DB mapping checks.

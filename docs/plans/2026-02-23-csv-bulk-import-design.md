@@ -74,13 +74,7 @@ SELECT
     salesrep.value AS salesrep_rep_id
 FROM customer_entity c
 LEFT JOIN customer_address_entity addr ON addr.entity_id = c.default_billing
-LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320
-LEFT JOIN customer_entity_int rep ON rep.entity_id = c.entity_id AND rep.attribute_id = 351
 LEFT JOIN customer_entity_int salesrep ON salesrep.entity_id = c.entity_id AND salesrep.attribute_id = 351
-WHERE
-    c.group_id != 5
-    AND (fraud.value IS NULL OR fraud.value != 1)
-    AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
 ORDER BY c.entity_id;
 ```
 
@@ -95,13 +89,6 @@ SELECT
     o.order_currency_code,
     o.created_at
 FROM sales_order o
-INNER JOIN customer_entity c ON c.entity_id = o.customer_id
-LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320
-LEFT JOIN customer_entity_int rep ON rep.entity_id = c.entity_id AND rep.attribute_id = 351
-WHERE
-    c.group_id != 5
-    AND (fraud.value IS NULL OR fraud.value != 1)
-    AND (rep.value IS NULL OR rep.value NOT IN (81, 97, 143, 121, 73, 130, 129, 128, 146))
 ORDER BY o.entity_id;
 ```
 
@@ -121,8 +108,6 @@ FROM sales_order_item oi
 INNER JOIN sales_order o ON o.entity_id = oi.order_id
 ORDER BY oi.order_id, oi.item_id;
 ```
-
-> Note: order_items does not need fraud/salesrep filters — the import script only processes items whose order_id appears in orders.csv, so excluded customers' items are automatically ignored.
 
 ## Export Commands
 

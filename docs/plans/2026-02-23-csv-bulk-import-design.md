@@ -26,6 +26,7 @@ All files go in `data/` at the project root.
 | region | customer_address_entity.region |
 | postcode | customer_address_entity.postcode |
 | country_id | customer_address_entity.country_id |
+| salesrep_rep_id | customer_entity_int (attribute_id 351) |
 
 ### `data/orders.csv`
 | Column | Source |
@@ -69,11 +70,13 @@ SELECT
     addr.city,
     addr.region,
     addr.postcode,
-    addr.country_id
+    addr.country_id,
+    salesrep.value AS salesrep_rep_id
 FROM customer_entity c
 LEFT JOIN customer_address_entity addr ON addr.entity_id = c.default_billing
 LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320
 LEFT JOIN customer_entity_int rep ON rep.entity_id = c.entity_id AND rep.attribute_id = 351
+LEFT JOIN customer_entity_int salesrep ON salesrep.entity_id = c.entity_id AND salesrep.attribute_id = 351
 WHERE
     c.group_id != 5
     AND (fraud.value IS NULL OR fraud.value != 1)

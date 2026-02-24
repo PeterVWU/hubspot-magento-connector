@@ -8,7 +8,7 @@ const STAGE_MAP = {
   holded: 'On Hold',
 };
 
-export function mapOrderToDeal(order, pipelineId, stageMap) {
+export function mapOrderToDeal(order, pipelineId, stageMap, ownerId = null) {
   const stageName = STAGE_MAP[order.status] || 'Checkout Completed';
   const stageId = stageMap[stageName];
 
@@ -19,6 +19,7 @@ export function mapOrderToDeal(order, pipelineId, stageMap) {
     dealstage: stageId || Object.values(stageMap)[0],
     order_number: String(order.increment_id),
     closedate: order.created_at ? new Date(order.created_at).getTime() : undefined,
+    ...(ownerId ? { hubspot_owner_id: ownerId } : {}),
   };
 }
 

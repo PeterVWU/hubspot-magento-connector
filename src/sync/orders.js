@@ -1,6 +1,7 @@
 import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapOrderToDeal, mapOrderItemToLineItem, getOrderItemsForSync } from '../mappers/order.mapper.js';
+import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
 
@@ -43,7 +44,8 @@ export async function syncOrders(since, runId) {
   for (const order of orders) {
     try {
       const existingHubspotId = await db.getHubspotId('order', order.entity_id);
-      await syncSingleOrder(order, runId);
+      const ownerId = await resolveOrderOwner(order);
+      await syncSingleOrder(order, runId, ownerId);
 
       if (existingHubspotId) {
         updated++;
@@ -67,10 +69,21 @@ export async function syncOrders(since, runId) {
   return { created, updated, failed };
 }
 
-export async function syncSingleOrder(order, runId) {
+async function resolveOrderOwner(order) {
+  if (!order.customer_id) return null;
+  try {
+    const customer = await magento.getCustomerById(order.customer_id);
+    const salesrepAttr = (customer.custom_attributes || []).find(a => a.attribute_code === 'salesrep_rep_id');
+    return salesrepAttr ? (SALESREP_OWNER_MAP[String(salesrepAttr.value)] || null) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function syncSingleOrder(order, runId, ownerId = null) {
   await ensurePipeline();
 
-  const dealProperties = mapOrderToDeal(order, pipelineId, stageMap);
+  const dealProperties = mapOrderToDeal(order, pipelineId, stageMap, ownerId);
 
   // Check if deal already exists in our mapping
   let dealHubspotId = await db.getHubspotId('order', order.entity_id);

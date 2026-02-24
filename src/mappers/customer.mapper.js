@@ -1,3 +1,5 @@
+import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
+
 export function mapCustomerToContact(customer) {
   const billingAddress = (customer.addresses || []).find(a => a.default_billing) || customer.addresses?.[0];
 
@@ -20,6 +22,14 @@ export function mapCustomerToContact(customer) {
   if (customer.created_at) {
     const d = new Date(customer.created_at);
     properties.account_created_date = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+
+  // Resolve salesrep → HubSpot owner (works for both Magento API and CSV import shapes)
+  const salesrepId = (customer.custom_attributes || []).find(a => a.attribute_code === 'salesrep_rep_id')?.value
+    ?? customer.salesrep_rep_id;
+  if (salesrepId) {
+    const ownerId = SALESREP_OWNER_MAP[String(salesrepId)];
+    if (ownerId) properties.hubspot_owner_id = ownerId;
   }
 
   return properties;

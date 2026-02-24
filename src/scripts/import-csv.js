@@ -11,6 +11,7 @@ import { runMigrations } from '../db/migrations.js';
 import pool from '../db/index.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
+import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
 import logger from '../utils/logger.js';
@@ -21,7 +22,7 @@ const ITEMS_PREFIX     = 'data/order_items';
 
 // Column names for headerless CSVs exported via: gcloud sql export csv
 // If your files have a header row, set these to true instead.
-const CUSTOMERS_COLUMNS = ['entity_id','email','firstname','lastname','created_at','company','telephone','street','city','region','postcode','country_id'];
+const CUSTOMERS_COLUMNS = ['entity_id','email','firstname','lastname','created_at','company','telephone','street','city','region','postcode','country_id','salesrep_rep_id'];
 const ORDERS_COLUMNS    = ['entity_id','increment_id','customer_id','grand_total','status','order_currency_code','created_at'];
 const ITEMS_COLUMNS     = ['item_id','order_id','product_id','name','sku','qty_ordered','row_total_incl_tax','price','product_type'];
 
@@ -56,6 +57,7 @@ async function importCustomers(rows) {
         firstname: row.firstname,
         lastname: row.lastname,
         created_at: row.created_at || null,
+        salesrep_rep_id: row.salesrep_rep_id || null,
         addresses: [{
           default_billing: true,
           company: row.company || '',
@@ -103,7 +105,7 @@ async function importCustomers(rows) {
 
 // --- Order sync ---
 
-async function importOrders(orderRows, itemRows) {
+async function importOrders(orderRows, itemRows, customerOwnerMap) {
   // Group items by order_id for fast lookup
   const itemsByOrderId = new Map();
   for (const item of itemRows) {
@@ -141,7 +143,8 @@ async function importOrders(orderRows, itemRows) {
       };
 
       const existed = !!(await db.getHubspotId('order', row.entity_id));
-      await syncSingleOrder(order, 'csv-import');
+      const ownerId = row.customer_id ? (customerOwnerMap.get(String(row.customer_id)) || null) : null;
+      await syncSingleOrder(order, 'csv-import', ownerId);
       existed ? updated++ : created++;
       progress('Orders', i, total, { created, updated, failed });
     } catch (err) {
@@ -180,8 +183,18 @@ async function run() {
   const custStats = await importCustomers(customerRows);
   logger.info('Customer import complete', custStats);
 
+  // Build customer_id → hubspot_owner_id map for order assignment
+  const customerOwnerMap = new Map();
+  for (const row of customerRows) {
+    if (row.salesrep_rep_id && row.entity_id) {
+      const ownerId = SALESREP_OWNER_MAP[String(row.salesrep_rep_id)];
+      if (ownerId) customerOwnerMap.set(String(row.entity_id), ownerId);
+    }
+  }
+  logger.info(`Built owner map: ${customerOwnerMap.size} customers have an assigned owner`);
+
   logger.info('--- Importing orders ---');
-  const orderStats = await importOrders(orderRows, itemRows);
+  const orderStats = await importOrders(orderRows, itemRows, customerOwnerMap);
   logger.info('Order import complete', orderStats);
 
   logger.info('=== IMPORT SUMMARY ===');

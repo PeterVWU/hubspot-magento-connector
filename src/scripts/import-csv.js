@@ -15,10 +15,15 @@ import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
 import logger from '../utils/logger.js';
 
-// Matches data/customers.csv OR data/customers_2020.csv, data/customers_2021.csv, etc.
 const CUSTOMERS_PREFIX = 'data/customers';
 const ORDERS_PREFIX    = 'data/orders';
 const ITEMS_PREFIX     = 'data/order_items';
+
+// Column names for headerless CSVs exported via: gcloud sql export csv
+// If your files have a header row, set these to true instead.
+const CUSTOMERS_COLUMNS = ['entity_id','email','firstname','lastname','created_at','company','telephone','street','city','region','postcode','country_id'];
+const ORDERS_COLUMNS    = ['entity_id','increment_id','customer_id','grand_total','status','order_currency_code','created_at'];
+const ITEMS_COLUMNS     = ['item_id','order_id','product_id','name','sku','qty_ordered','row_total_incl_tax','price','product_type'];
 
 function progress(label, current, total, stats) {
   const pct = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
@@ -161,9 +166,9 @@ async function run() {
     { rows: orderRows,    files: orderFiles },
     { rows: itemRows,     files: itemFiles },
   ] = await Promise.all([
-    readCsvGlob(CUSTOMERS_PREFIX),
-    readCsvGlob(ORDERS_PREFIX),
-    readCsvGlob(ITEMS_PREFIX),
+    readCsvGlob(CUSTOMERS_PREFIX, CUSTOMERS_COLUMNS),
+    readCsvGlob(ORDERS_PREFIX,    ORDERS_COLUMNS),
+    readCsvGlob(ITEMS_PREFIX,     ITEMS_COLUMNS),
   ]);
 
   logger.info('Customer files:', custFiles);

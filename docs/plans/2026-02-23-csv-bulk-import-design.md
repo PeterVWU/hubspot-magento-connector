@@ -66,7 +66,7 @@ SELECT
     c.created_at,
     addr.company,
     addr.telephone,
-    addr.street,
+    REPLACE(addr.street, '\n', ' ') AS street,
     addr.city,
     addr.region,
     addr.postcode,
@@ -121,17 +121,17 @@ ORDER BY oi.order_id, oi.item_id;
 ## Export Commands
 
 ```bash
-gcloud sql export csv INSTANCE gs://YOUR_BUCKET/hubspot-import/customers.csv \
-  --database=DB --query="<customers.sql above>"
+gcloud sql export csv  vwu-vusa-prod-db-replica gs://vwudatabasedump/hubspot-import/customers.csv \
+  --database=vusa_db0 --query="<customers.sql above>"
 
-gcloud sql export csv INSTANCE gs://YOUR_BUCKET/hubspot-import/orders.csv \
-  --database=DB --query="<orders.sql above>"
+gcloud sql export csv vwu-vusa-prod-db-replica gs://vwudatabasedump/hubspot-import/orders.csv \
+  --database=vusa_db0 --query="<orders.sql above>"
 
-gcloud sql export csv INSTANCE gs://YOUR_BUCKET/hubspot-import/order_items.csv \
-  --database=DB --query="<order_items.sql above>"
+gcloud sql export csv vwu-vusa-prod-db-replica gs://vwudatabasedump/hubspot-import/order_items.csv \
+  --database=vusa_db0 --query="<order_items.sql above>"
 
 # Download all three to data/
-gsutil cp "gs://YOUR_BUCKET/hubspot-import/*.csv" data/
+gsutil cp "gs://vwudatabasedump/hubspot-import/*.csv" data/
 ```
 
 ## Import Script

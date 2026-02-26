@@ -54,22 +54,32 @@ All files go in `data/` at the project root.
 
 ## SQL Queries
 
-Export via `gcloud sql export csv` — runs server-side, writes directly to GCS, no row limit. Files have no header row; column names are defined in the import script.
+Export via `gcloud sql export csv` — runs server-side, writes directly to GCS, no row limit.
+
+**Each query includes a header row** via `UNION ALL` — the exported CSV is self-describing and can be opened directly in Excel/Sheets. The import script reads headers from the file (`columns: true`).
+
+**Text field sanitization** — `gcloud sql export csv` uses MySQL's non-standard backslash escaping, which breaks RFC 4180 CSV parsers when fields contain `"`, `,`, or newlines. All free-text fields are cleaned with:
+```
+REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(field, ''), '"', ''), ',', ' '), '\r', ''), '\n', ' ')
+```
+This removes embedded double-quotes and replaces commas/newlines with spaces. Minor data loss in edge cases (e.g. "Smith, Jones" → "Smith  Jones") is acceptable for CRM import purposes.
 
 ### customers.sql
 ```sql
+SELECT 'entity_id', 'email', 'firstname', 'lastname', 'created_at', 'company', 'telephone', 'street', 'city', 'region', 'postcode', 'country_id', 'salesrep_rep_id'
+UNION ALL
 SELECT
     c.entity_id,
     c.email,
-    c.firstname,
-    c.lastname,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(c.firstname, ''),    '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS firstname,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(c.lastname, ''),     '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS lastname,
     c.created_at,
-    COALESCE(addr.company, '') AS company,
-    COALESCE(addr.telephone, '') AS telephone,
-    COALESCE(REPLACE(addr.street, '\n', ' '), '') AS street,
-    COALESCE(addr.city, '') AS city,
-    COALESCE(addr.region, '') AS region,
-    COALESCE(addr.postcode, '') AS postcode,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(addr.company, ''),   '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS company,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(addr.telephone, ''), '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS telephone,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(addr.street, ''),    '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS street,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(addr.city, ''),      '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS city,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(addr.region, ''),    '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS region,
+    REPLACE(REPLACE(COALESCE(addr.postcode, ''),    '"', ''), ',', ' ') AS postcode,
     COALESCE(addr.country_id, '') AS country_id,
     COALESCE(salesrep.value, '') AS salesrep_rep_id
 FROM customer_entity c
@@ -78,18 +88,19 @@ LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.a
 LEFT JOIN customer_entity_int salesrep ON salesrep.entity_id = c.entity_id AND salesrep.attribute_id = 351
 WHERE
     c.group_id != 5
-    AND (fraud.value IS NULL OR fraud.value != 1)
-ORDER BY c.entity_id;
+    AND (fraud.value IS NULL OR fraud.value != 1);
 ```
 
 ### orders.sql
 ```sql
+SELECT 'entity_id', 'increment_id', 'customer_id', 'grand_total', 'status', 'order_currency_code', 'created_at'
+UNION ALL
 SELECT
     o.entity_id,
     o.increment_id,
     o.customer_id,
     COALESCE(o.grand_total, 0) AS grand_total,
-    o.status,
+    COALESCE(o.status, '') AS status,
     COALESCE(o.order_currency_code, 'USD') AS order_currency_code,
     o.created_at
 FROM sales_order o
@@ -97,25 +108,25 @@ INNER JOIN customer_entity c ON c.entity_id = o.customer_id
 LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320
 WHERE
     c.group_id != 5
-    AND (fraud.value IS NULL OR fraud.value != 1)
-ORDER BY o.entity_id;
+    AND (fraud.value IS NULL OR fraud.value != 1);
 ```
 
 ### order_items.sql
 ```sql
+SELECT 'item_id', 'order_id', 'product_id', 'name', 'sku', 'qty_ordered', 'row_total_incl_tax', 'price', 'product_type'
+UNION ALL
 SELECT
     oi.item_id,
     oi.order_id,
     oi.product_id,
-    oi.name,
-    COALESCE(oi.sku, '') AS sku,
+    REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(oi.name, ''), '"', ''), ',', ' '), '\r', ''), '\n', ' ') AS name,
+    REPLACE(REPLACE(COALESCE(oi.sku, ''), '"', ''), ',', ' ') AS sku,
     COALESCE(oi.qty_ordered, 0) AS qty_ordered,
     COALESCE(oi.row_total_incl_tax, 0) AS row_total_incl_tax,
     COALESCE(oi.price, 0) AS price,
-    oi.product_type
+    COALESCE(oi.product_type, '') AS product_type
 FROM sales_order_item oi
-INNER JOIN sales_order o ON o.entity_id = oi.order_id
-ORDER BY oi.order_id, oi.item_id;
+INNER JOIN sales_order o ON o.entity_id = oi.order_id;
 ```
 
 ## Export Commands
@@ -147,9 +158,18 @@ gsutil cp "gs://vwudatabasedump/hubspot-import/*.csv" data/
 
 **No retry queue** — this is a one-time operation. Failures are logged and can be re-run; the script is fully idempotent via the existing DB mapping checks.
 
+**Column mapping:** CSV files now include a header row, so `readCsvGlob()` is called without a columns argument (defaults to `columns: true` — read headers from file). The hardcoded `CUSTOMERS_COLUMNS`, `ORDERS_COLUMNS`, `ITEMS_COLUMNS` arrays are removed.
+
 **Reuses without modification:**
 - `src/mappers/customer.mapper.js`
 - `src/mappers/order.mapper.js`
 - `src/sync/orders.js` → `syncSingleOrder()`
 - `src/api/hubspot.js`
 - `src/db/sync-state.js`
+
+## CSV Parser (`src/utils/csv.js`)
+
+With clean SQL output the parser simplifies significantly:
+
+- **Remove** `fixGcloudSplitRecords()` Transform — no longer needed since text fields are sanitized
+- **Remove** `relax_quotes: true` and `relax_column_count: true` — these masked bad data; strict RFC 4180 parsing is correct now and will fail fast on any remaining issues

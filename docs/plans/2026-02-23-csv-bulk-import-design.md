@@ -88,9 +88,9 @@ SELECT
     o.entity_id,
     o.increment_id,
     o.customer_id,
-    o.grand_total,
+    COALESCE(o.grand_total, 0) AS grand_total,
     o.status,
-    o.order_currency_code,
+    COALESCE(o.order_currency_code, 'USD') AS order_currency_code,
     o.created_at
 FROM sales_order o
 INNER JOIN customer_entity c ON c.entity_id = o.customer_id
@@ -108,10 +108,10 @@ SELECT
     oi.order_id,
     oi.product_id,
     oi.name,
-    oi.sku,
-    oi.qty_ordered,
-    oi.row_total_incl_tax,
-    oi.price,
+    COALESCE(oi.sku, '') AS sku,
+    COALESCE(oi.qty_ordered, 0) AS qty_ordered,
+    COALESCE(oi.row_total_incl_tax, 0) AS row_total_incl_tax,
+    COALESCE(oi.price, 0) AS price,
     oi.product_type
 FROM sales_order_item oi
 INNER JOIN sales_order o ON o.entity_id = oi.order_id

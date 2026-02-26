@@ -16,6 +16,8 @@ export async function readCsv(filePath, columns = true) {
         columns,
         skip_empty_lines: true,
         trim: true,
+        relax_quotes: true,
+        relax_column_count: true,
       }))
       .on('data', (row) => records.push(row))
       .on('end', () => resolve(records))

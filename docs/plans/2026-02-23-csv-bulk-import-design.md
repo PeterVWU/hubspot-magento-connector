@@ -64,14 +64,14 @@ SELECT
     c.firstname,
     c.lastname,
     c.created_at,
-    addr.company,
-    addr.telephone,
-    REPLACE(addr.street, '\n', ' ') AS street,
-    addr.city,
-    addr.region,
-    addr.postcode,
-    addr.country_id,
-    salesrep.value AS salesrep_rep_id
+    COALESCE(addr.company, '') AS company,
+    COALESCE(addr.telephone, '') AS telephone,
+    COALESCE(REPLACE(addr.street, '\n', ' '), '') AS street,
+    COALESCE(addr.city, '') AS city,
+    COALESCE(addr.region, '') AS region,
+    COALESCE(addr.postcode, '') AS postcode,
+    COALESCE(addr.country_id, '') AS country_id,
+    COALESCE(salesrep.value, '') AS salesrep_rep_id
 FROM customer_entity c
 LEFT JOIN customer_address_entity addr ON addr.entity_id = c.default_billing
 LEFT JOIN customer_entity_int fraud ON fraud.entity_id = c.entity_id AND fraud.attribute_id = 320

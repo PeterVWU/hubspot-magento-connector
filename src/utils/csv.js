@@ -27,7 +27,8 @@ export async function readCsv(filePath, columns = true) {
  * Reads all CSV files matching a prefix (e.g. "data/customers" matches
  * data/customers.csv, data/customers_2020.csv, ...).
  * Files are sorted alphabetically before reading.
- * Pass columns as an array for headerless files (gcloud sql export csv output).
+ * columns defaults to true (read header row from file). Pass a string array
+ * only for legacy headerless files.
  */
 export async function readCsvGlob(prefix, columns = true) {
   const dir = dirname(prefix);

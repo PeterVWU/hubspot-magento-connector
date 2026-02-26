@@ -46,7 +46,7 @@ export async function readCsvGlob(prefix, columns = true) {
   const rows = [];
   for (const file of files) {
     const chunk = await readCsv(file, columns);
-    rows.push(...chunk);
+    for (const row of chunk) rows.push(row);
   }
   return { rows, files };
 }

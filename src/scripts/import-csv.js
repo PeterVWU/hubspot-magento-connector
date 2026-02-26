@@ -20,7 +20,6 @@ const CUSTOMERS_PREFIX = 'data/customers';
 const ORDERS_PREFIX    = 'data/orders';
 const ITEMS_PREFIX     = 'data/order_items';
 
-
 function progress(label, current, total, stats) {
   const pct = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
   const bar = Math.floor((current / total) * 20);

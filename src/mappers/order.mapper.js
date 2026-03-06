@@ -27,7 +27,7 @@ export function mapOrderItemToLineItem(item, hubspotProductId) {
   return {
     name: item.name || '',
     quantity: String(item.qty_ordered || 1),
-    price: String(item.row_total_incl_tax || item.price || '0'),
+    price: String(item.price_incl_tax || item.price || '0'),
     hs_sku: item.sku || '',
     ...(hubspotProductId ? { hs_product_id: hubspotProductId } : {}),
   };

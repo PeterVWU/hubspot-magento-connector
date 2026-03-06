@@ -1,6 +1,7 @@
 import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapOrderToDeal, mapOrderItemToLineItem, getOrderItemsForSync } from '../mappers/order.mapper.js';
+import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
@@ -80,6 +81,38 @@ async function resolveOrderOwner(order) {
   }
 }
 
+async function resolveOrCreateContact(order, runId) {
+  try {
+    const customer = await magento.getCustomerById(order.customer_id);
+    if (!customer.email) return null;
+
+    const properties = mapCustomerToContact(customer);
+
+    // Search HubSpot by email first
+    const existing = await hubspot.searchContacts(customer.email);
+    if (existing) {
+      await db.upsertMapping('customer', order.customer_id, existing.id);
+      logger.debug('Found existing contact in HubSpot for order', {
+        customerId: order.customer_id, hubspotId: existing.id, runId,
+      });
+      return existing.id;
+    }
+
+    // Create the contact
+    const result = await hubspot.createContact(properties);
+    await db.upsertMapping('customer', order.customer_id, result.id);
+    logger.debug('Created contact from order sync', {
+      customerId: order.customer_id, hubspotId: result.id, runId,
+    });
+    return result.id;
+  } catch (err) {
+    logger.warn('Could not resolve/create contact for order', {
+      customerId: order.customer_id, orderId: order.increment_id, error: err.message, runId,
+    });
+    return null;
+  }
+}
+
 export async function syncSingleOrder(order, runId, ownerId = null) {
   await ensurePipeline();
 
@@ -108,9 +141,14 @@ export async function syncSingleOrder(order, runId, ownerId = null) {
   }
 
   // Associate contact to deal (type 3 = deal → contact)
-  const contactHubspotId = order.customer_id
+  let contactHubspotId = order.customer_id
     ? await db.getHubspotId('customer', order.customer_id)
     : null;
+
+  if (!contactHubspotId && order.customer_id) {
+    // No DB mapping — look up or create the contact in HubSpot
+    contactHubspotId = await resolveOrCreateContact(order, runId);
+  }
 
   if (contactHubspotId) {
     await hubspot.batchCreateAssociations('deal', 'contact', [{

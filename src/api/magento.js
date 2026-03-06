@@ -83,26 +83,37 @@ export async function getCustomersUpdatedSince(since) {
 
   const filters = [
     { field: 'updated_at', value: sinceStr, condition: 'gteq', group: 0, filterIdx: 0 },
+    // Exclude fraud customer group (group_id = 5) server-side
+    { field: 'group_id', value: '5', condition: 'neq', group: 1, filterIdx: 0 },
   ];
 
   // Fetch customers updated since the given time
   const customers = await fetchAllPages('/customers/search', filters, 'customers', config.magento.maxRecordsPerSync);
 
-  // Client-side filter: exclude customers assigned to specific sales reps
-  if (excludedIds.length > 0) {
-    const before = customers.length;
-    const filtered = customers.filter((customer) => {
-      const salesrepAttr = (customer.custom_attributes || [])
-        .find(a => a.attribute_code === 'salesrep_rep_id');
+  // Client-side filters for custom EAV attributes
+  const before = customers.length;
+  const filtered = customers.filter((customer) => {
+    const attrs = customer.custom_attributes || [];
+
+    // Exclude customers with Fraud flag set to 1
+    const fraudAttr = attrs.find(a => a.attribute_code === 'Fraud');
+    if (fraudAttr?.value === '1' || fraudAttr?.value === 1) return false;
+
+    // Exclude customers assigned to specific sales reps
+    if (excludedIds.length > 0) {
+      const salesrepAttr = attrs.find(a => a.attribute_code === 'salesrep_rep_id');
       const salesrepId = salesrepAttr?.value;
-      // Keep if no salesrep or salesrep not in excluded list
-      return !salesrepId || !excludedIds.includes(String(salesrepId));
-    });
-    logger.info(`Customer salesrep filter: ${before} -> ${filtered.length} (excluded ${before - filtered.length})`);
-    return filtered;
+      if (salesrepId && excludedIds.includes(String(salesrepId))) return false;
+    }
+
+    return true;
+  });
+
+  if (filtered.length !== before) {
+    logger.info(`Customer filters applied: ${before} -> ${filtered.length} (excluded ${before - filtered.length})`);
   }
 
-  return customers;
+  return filtered;
 }
 
 export async function getProductsUpdatedSince(since) {
@@ -111,6 +122,19 @@ export async function getProductsUpdatedSince(since) {
     { field: 'updated_at', value: sinceStr, condition: 'gteq', group: 0, filterIdx: 0 },
   ];
   return fetchAllPages('/products', filters, 'products', config.magento.maxRecordsPerSync);
+}
+
+export async function getCustomerById(customerId) {
+  logger.debug('Fetching single customer', { customerId });
+  const { data } = await client.get(`/customers/${customerId}`);
+  return data;
+}
+
+export async function getOrdersByCustomerId(customerId) {
+  const filters = [
+    { field: 'customer_id', value: String(customerId), condition: 'eq', group: 0, filterIdx: 0 },
+  ];
+  return fetchAllPages('/orders', filters, 'orders', 0);
 }
 
 export async function getOrderById(orderId) {

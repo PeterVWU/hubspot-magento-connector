@@ -45,6 +45,15 @@ export async function syncCustomers(since, runId) {
         }
       }
     } catch (err) {
+      const isInvalidEmail = err.response?.data?.errors?.some(e => e.code === 'INVALID_EMAIL');
+      if (isInvalidEmail) {
+        logger.warn('Skipping customer with invalid email (will not retry)', {
+          magentoId: customer.id,
+          email: properties.email,
+          runId,
+        });
+        continue;
+      }
       failed++;
       logger.error('Failed to sync customer', {
         magentoId: customer.id,

@@ -49,7 +49,7 @@ export async function syncCustomers(since, runId) {
       if (isInvalidEmail) {
         logger.warn('Skipping customer with invalid email (will not retry)', {
           magentoId: customer.id,
-          email: properties.email,
+          email: customer.email,
           runId,
         });
         continue;

@@ -36,18 +36,20 @@ export async function runFullSync() {
     const orderResult = await syncOrders(orderSince, runId);
 
     // 4. Update sync timestamps only for entity types with zero failures
+    // Use lastUpdatedAt (high-water mark from processed records) when available,
+    // so that maxRecords-limited runs advance incrementally rather than jumping to now
     if (productResult.failed === 0) {
-      await db.updateLastSyncedAt('product', syncStart);
+      await db.updateLastSyncedAt('product', productResult.lastUpdatedAt || syncStart);
     } else {
       logger.warn('Skipping product timestamp update due to failures', { failed: productResult.failed });
     }
     if (customerResult.failed === 0) {
-      await db.updateLastSyncedAt('customer', syncStart);
+      await db.updateLastSyncedAt('customer', customerResult.lastUpdatedAt || syncStart);
     } else {
       logger.warn('Skipping customer timestamp update due to failures', { failed: customerResult.failed });
     }
     if (orderResult.failed === 0) {
-      await db.updateLastSyncedAt('order', syncStart);
+      await db.updateLastSyncedAt('order', orderResult.lastUpdatedAt || syncStart);
     } else {
       logger.warn('Skipping order timestamp update due to failures', { failed: orderResult.failed });
     }

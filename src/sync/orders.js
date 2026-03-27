@@ -64,10 +64,15 @@ export async function syncOrders(since, runId) {
     }
   }
 
+  // Use the last record's updated_at as the high-water mark (records are sorted ASC)
+  const lastUpdatedAt = orders.length > 0
+    ? new Date(orders[orders.length - 1].updated_at)
+    : null;
+
   logger.info('Order sync complete', { created, updated, failed, total: orders.length, runId });
   await db.logSync(runId, 'order', 'info', `Synced ${orders.length} orders: ${created} created, ${updated} updated, ${failed} failed`);
 
-  return { created, updated, failed };
+  return { created, updated, failed, lastUpdatedAt };
 }
 
 async function resolveOrderOwner(order) {

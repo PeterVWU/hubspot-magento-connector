@@ -55,8 +55,13 @@ export async function syncProducts(since, runId) {
     }
   }
 
+  // Use the last record's updated_at as the high-water mark (records are sorted ASC)
+  const lastUpdatedAt = products.length > 0
+    ? new Date(products[products.length - 1].updated_at)
+    : null;
+
   logger.info('Product sync complete', { created, updated, failed, total: products.length, runId });
   await db.logSync(runId, 'product', 'info', `Synced ${products.length} products: ${created} created, ${updated} updated, ${failed} failed`);
 
-  return { created, updated, failed };
+  return { created, updated, failed, lastUpdatedAt };
 }

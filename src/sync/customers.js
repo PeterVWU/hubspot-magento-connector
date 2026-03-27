@@ -64,8 +64,13 @@ export async function syncCustomers(since, runId) {
     }
   }
 
+  // Use the last record's updated_at as the high-water mark (records are sorted ASC)
+  const lastUpdatedAt = customers.length > 0
+    ? new Date(customers[customers.length - 1].updated_at)
+    : null;
+
   logger.info('Customer sync complete', { created, updated, failed, total: customers.length, runId });
   await db.logSync(runId, 'customer', 'info', `Synced ${customers.length} customers: ${created} created, ${updated} updated, ${failed} failed`);
 
-  return { created, updated, failed };
+  return { created, updated, failed, lastUpdatedAt };
 }

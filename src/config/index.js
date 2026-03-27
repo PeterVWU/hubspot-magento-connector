@@ -19,6 +19,7 @@ export const config = {
     token: process.env.MAGENTO_TOKEN,
     pageSize: parseInt(process.env.MAGENTO_PAGE_SIZE || '100', 10),
     maxRecordsPerSync: parseInt(process.env.MAX_RECORDS_PER_SYNC || '0', 10),
+    timeout: parseInt(process.env.MAGENTO_TIMEOUT_MS || '120000', 10),
   },
   hubspot: {
     accessToken: process.env.HUBSPOT_ACCESS_TOKEN,

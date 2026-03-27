@@ -8,7 +8,7 @@ const client = axios.create({
     Authorization: `Bearer ${config.magento.token}`,
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: config.magento.timeout,
 });
 
 client.interceptors.response.use(

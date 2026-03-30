@@ -61,13 +61,16 @@ export async function runFullSync() {
 
   logger.info('=== Starting full sync ===', { runId });
 
+  let watchdogTimer;
   try {
-    const results = await Promise.race([
-      runSyncBody(runId, syncStart),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Sync timed out after ${config.sync.timeoutMinutes} minutes`)), timeoutMs)
-      ),
-    ]);
+    const watchdog = new Promise((_, reject) => {
+      watchdogTimer = setTimeout(
+        () => reject(new Error(`Sync timed out after ${config.sync.timeoutMinutes} minutes`)),
+        timeoutMs,
+      );
+    });
+
+    const results = await Promise.race([runSyncBody(runId, syncStart), watchdog]);
 
     logger.info('=== Full sync complete ===', {
       runId,
@@ -80,6 +83,7 @@ export async function runFullSync() {
     logger.error('Full sync failed', { runId, error: err.message, stack: err.stack });
     await db.logSync(runId, null, 'error', `Sync failed: ${err.message}`);
   } finally {
+    clearTimeout(watchdogTimer);
     syncInProgress = false;
   }
 }

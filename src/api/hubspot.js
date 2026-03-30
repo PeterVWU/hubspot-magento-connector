@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { config } from '../config/index.js';
 import logger from '../utils/logger.js';
+import { withTimeout } from '../utils/timeout.js';
 
 const RATE_LIMIT_PER_SECOND = 9;
 const SEARCH_RATE_LIMIT_PER_SECOND = 4;
@@ -35,7 +36,6 @@ const client = axios.create({
     Authorization: `Bearer ${config.hubspot.accessToken}`,
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
 });
 
 client.interceptors.response.use(
@@ -45,8 +45,14 @@ client.interceptors.response.use(
     const url = error.config?.url;
 
     if (status === 429) {
+      const retries = (error.config._retryCount || 0) + 1;
+      if (retries > config.hubspot.maxRetries) {
+        logger.error('HubSpot rate limit retries exhausted', { url, retries });
+        throw error;
+      }
+      error.config._retryCount = retries;
       const retryAfter = parseInt(error.response.headers['retry-after'] || '10', 10);
-      logger.warn('HubSpot rate limited, retrying', { url, retryAfter });
+      logger.warn('HubSpot rate limited, retrying', { url, retryAfter, attempt: retries });
       await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
       return client.request(error.config);
     }
@@ -60,41 +66,45 @@ client.interceptors.response.use(
   },
 );
 
+function hsRequest(fn) {
+  return withTimeout(fn, config.hubspot.timeout);
+}
+
 // --- Search Operations ---
 
 export async function searchContacts(email) {
   await rateLimitDelay(true);
-  const { data } = await client.post('/crm/v3/objects/contacts/search', {
+  const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/contacts/search', {
     filterGroups: [{
       filters: [{ propertyName: 'email', operator: 'EQ', value: email }],
     }],
     properties: ['email', 'firstname', 'lastname'],
     limit: 1,
-  });
+  }, { signal }));
   return data.results[0] || null;
 }
 
 export async function searchProductBySku(sku) {
   await rateLimitDelay(true);
-  const { data } = await client.post('/crm/v3/objects/products/search', {
+  const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/products/search', {
     filterGroups: [{
       filters: [{ propertyName: 'hs_sku', operator: 'EQ', value: sku }],
     }],
     properties: ['name', 'hs_sku', 'price'],
     limit: 1,
-  });
+  }, { signal }));
   return data.results[0] || null;
 }
 
 export async function searchDealByOrderNumber(orderNumber) {
   await rateLimitDelay(true);
-  const { data } = await client.post('/crm/v3/objects/deals/search', {
+  const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/deals/search', {
     filterGroups: [{
       filters: [{ propertyName: 'order_number', operator: 'EQ', value: orderNumber }],
     }],
     properties: ['dealname', 'order_number', 'dealstage', 'amount'],
     limit: 1,
-  });
+  }, { signal }));
   return data.results[0] || null;
 }
 
@@ -102,37 +112,37 @@ export async function searchDealByOrderNumber(orderNumber) {
 
 export async function createContact(properties) {
   await rateLimitDelay();
-  const { data } = await client.post('/crm/v3/objects/contacts', { properties });
+  const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/contacts', { properties }, { signal }));
   return data;
 }
 
 export async function updateContact(hubspotId, properties) {
   await rateLimitDelay();
-  const { data } = await client.patch(`/crm/v3/objects/contacts/${hubspotId}`, { properties });
+  const { data } = await hsRequest((signal) => client.patch(`/crm/v3/objects/contacts/${hubspotId}`, { properties }, { signal }));
   return data;
 }
 
 export async function createProduct(properties) {
   await rateLimitDelay();
-  const { data } = await client.post('/crm/v3/objects/products', { properties });
+  const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/products', { properties }, { signal }));
   return data;
 }
 
 export async function updateProduct(hubspotId, properties) {
   await rateLimitDelay();
-  const { data } = await client.patch(`/crm/v3/objects/products/${hubspotId}`, { properties });
+  const { data } = await hsRequest((signal) => client.patch(`/crm/v3/objects/products/${hubspotId}`, { properties }, { signal }));
   return data;
 }
 
 export async function createDeal(properties) {
   await rateLimitDelay();
-  const { data } = await client.post('/crm/v3/objects/deals', { properties });
+  const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/deals', { properties }, { signal }));
   return data;
 }
 
 export async function updateDeal(hubspotId, properties) {
   await rateLimitDelay();
-  const { data } = await client.patch(`/crm/v3/objects/deals/${hubspotId}`, { properties });
+  const { data } = await hsRequest((signal) => client.patch(`/crm/v3/objects/deals/${hubspotId}`, { properties }, { signal }));
   return data;
 }
 
@@ -140,7 +150,7 @@ export async function updateDeal(hubspotId, properties) {
 
 export async function getDealPipelines() {
   await rateLimitDelay();
-  const { data } = await client.get('/crm/v3/pipelines/deals');
+  const { data } = await hsRequest((signal) => client.get('/crm/v3/pipelines/deals', { signal }));
   return data.results || [];
 }
 
@@ -149,13 +159,9 @@ export async function getDealPipelines() {
 export async function createContactProperty(name, label, type = 'string', fieldType = 'text') {
   await rateLimitDelay();
   try {
-    const { data } = await client.post('/crm/v3/properties/contacts', {
-      name,
-      label,
-      type,
-      fieldType,
-      groupName: 'contactinformation',
-    });
+    const { data } = await hsRequest((signal) => client.post('/crm/v3/properties/contacts', {
+      name, label, type, fieldType, groupName: 'contactinformation',
+    }, { signal }));
     return data;
   } catch (err) {
     if (err.response?.status === 409) {
@@ -169,13 +175,9 @@ export async function createContactProperty(name, label, type = 'string', fieldT
 export async function createDealProperty(name, label, type = 'string', fieldType = 'text') {
   await rateLimitDelay();
   try {
-    const { data } = await client.post('/crm/v3/properties/deals', {
-      name,
-      label,
-      type,
-      fieldType,
-      groupName: 'dealinformation',
-    });
+    const { data } = await hsRequest((signal) => client.post('/crm/v3/properties/deals', {
+      name, label, type, fieldType, groupName: 'dealinformation',
+    }, { signal }));
     return data;
   } catch (err) {
     if (err.response?.status === 409) {
@@ -195,9 +197,9 @@ export async function batchCreateLineItems(inputs) {
   for (let i = 0; i < inputs.length; i += batchSize) {
     const batch = inputs.slice(i, i + batchSize);
     await rateLimitDelay();
-    const { data } = await client.post('/crm/v3/objects/line_items/batch/create', {
+    const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/line_items/batch/create', {
       inputs: batch,
-    });
+    }, { signal }));
     results.push(...(data.results || []));
     logger.debug(`Created line items batch ${Math.floor(i / batchSize) + 1}`, { count: batch.length });
   }
@@ -212,9 +214,9 @@ export async function batchUpdateLineItems(inputs) {
   for (let i = 0; i < inputs.length; i += batchSize) {
     const batch = inputs.slice(i, i + batchSize);
     await rateLimitDelay();
-    const { data } = await client.post('/crm/v3/objects/line_items/batch/update', {
+    const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/line_items/batch/update', {
       inputs: batch,
-    });
+    }, { signal }));
     results.push(...(data.results || []));
   }
 
@@ -226,8 +228,8 @@ export async function batchUpdateLineItems(inputs) {
 export async function batchCreateAssociations(fromType, toType, inputs) {
   if (!inputs.length) return;
   await rateLimitDelay();
-  await client.post(`/crm/v4/associations/${fromType}/${toType}/batch/create`, {
+  await hsRequest((signal) => client.post(`/crm/v4/associations/${fromType}/${toType}/batch/create`, {
     inputs,
-  });
+  }, { signal }));
 }
 

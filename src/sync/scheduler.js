@@ -9,6 +9,11 @@ import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
 
 let syncInProgress = false;
+let heartbeat = () => {};
+
+export function setHeartbeat(fn) {
+  heartbeat = fn;
+}
 
 async function runSyncBody(runId, syncStart) {
   // 1. Sync products first (orders reference them)
@@ -85,6 +90,7 @@ export async function runFullSync() {
   } finally {
     clearTimeout(watchdogTimer);
     syncInProgress = false;
+    heartbeat();
   }
 }
 

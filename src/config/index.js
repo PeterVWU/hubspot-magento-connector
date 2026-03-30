@@ -24,12 +24,15 @@ export const config = {
   hubspot: {
     accessToken: process.env.HUBSPOT_ACCESS_TOKEN,
     batchSize: parseInt(process.env.HUBSPOT_BATCH_SIZE || '100', 10),
+    timeout: parseInt(process.env.HUBSPOT_TIMEOUT_MS || '30000', 10),
+    maxRetries: parseInt(process.env.HUBSPOT_MAX_RETRIES || '3', 10),
   },
   db: {
     connectionString: process.env.DATABASE_URL,
   },
   sync: {
     intervalMinutes: parseInt(process.env.SYNC_INTERVAL_MINUTES || '5', 10),
+    timeoutMinutes: parseInt(process.env.SYNC_TIMEOUT_MINUTES || '10', 10),
     startDate: process.env.SYNC_START_DATE
       ? new Date(process.env.SYNC_START_DATE)
       : null,

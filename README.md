@@ -33,7 +33,14 @@ SYNC_START_DATE=2024-01-01    # Only sync records updated after this date
 EXCLUDED_SALESREP_IDS=1,2,3   # Comma-separated Magento sales rep IDs to exclude
 MAGENTO_PAGE_SIZE=100         # Magento API page size (default: 100)
 HUBSPOT_BATCH_SIZE=100        # HubSpot batch upsert size (default: 100)
+MAX_RECORDS_PER_SYNC=0        # Max records per entity per cycle, 0=unlimited (default: 0)
 LOG_LEVEL=info                # Logging level (default: info)
+
+# Timeouts
+MAGENTO_TIMEOUT_MS=120000     # Per-request Magento timeout in ms (default: 120000)
+HUBSPOT_TIMEOUT_MS=30000      # Per-request HubSpot timeout in ms (default: 30000)
+HUBSPOT_MAX_RETRIES=3         # Max 429 rate-limit retries per request (default: 3)
+SYNC_TIMEOUT_MINUTES=10       # Max duration for a full sync cycle (default: 10)
 ```
 
 ## Running with Docker Compose (recommended)

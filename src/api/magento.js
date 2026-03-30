@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { config } from '../config/index.js';
 import logger from '../utils/logger.js';
+import { withTimeout } from '../utils/timeout.js';
 
 const client = axios.create({
   baseURL: config.magento.baseUrl,
@@ -8,7 +9,6 @@ const client = axios.create({
     Authorization: `Bearer ${config.magento.token}`,
     'Content-Type': 'application/json',
   },
-  timeout: config.magento.timeout,
 });
 
 client.interceptors.response.use(
@@ -54,7 +54,10 @@ async function fetchAllPages(endpoint, filters, entityName, maxRecords = 0) {
     const url = `${endpoint}?${query}`;
 
     logger.debug(`Fetching ${entityName} page ${currentPage}`, { url });
-    const { data } = await client.get(url);
+    const { data } = await withTimeout(
+      (signal) => client.get(url, { signal }),
+      config.magento.timeout,
+    );
 
     totalCount = data.total_count;
     allItems = allItems.concat(data.items || []);
@@ -126,7 +129,10 @@ export async function getProductsUpdatedSince(since) {
 
 export async function getCustomerById(customerId) {
   logger.debug('Fetching single customer', { customerId });
-  const { data } = await client.get(`/customers/${customerId}`);
+  const { data } = await withTimeout(
+    (signal) => client.get(`/customers/${customerId}`, { signal }),
+    config.magento.timeout,
+  );
   return data;
 }
 
@@ -139,7 +145,10 @@ export async function getOrdersByCustomerId(customerId) {
 
 export async function getOrderById(orderId) {
   logger.debug('Fetching single order', { orderId });
-  const { data } = await client.get(`/orders/${orderId}`);
+  const { data } = await withTimeout(
+    (signal) => client.get(`/orders/${orderId}`, { signal }),
+    config.magento.timeout,
+  );
   return data;
 }
 

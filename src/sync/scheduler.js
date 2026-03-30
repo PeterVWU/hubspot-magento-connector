@@ -10,6 +10,44 @@ import logger from '../utils/logger.js';
 
 let syncInProgress = false;
 
+async function runSyncBody(runId, syncStart) {
+  // 1. Sync products first (orders reference them)
+  const productSince = await db.getLastSyncedAt('product');
+  const productResult = await syncProducts(productSince, runId);
+
+  // 2. Sync customers (orders reference them)
+  const customerSince = await db.getLastSyncedAt('customer');
+  const customerResult = await syncCustomers(customerSince, runId);
+
+  // 3. Sync orders last
+  const orderSince = await db.getLastSyncedAt('order');
+  const orderResult = await syncOrders(orderSince, runId);
+
+  // 4. Update sync timestamps only for entity types with zero failures
+  // Use lastUpdatedAt (high-water mark from processed records) when available,
+  // so that maxRecords-limited runs advance incrementally rather than jumping to now
+  if (productResult.failed === 0) {
+    await db.updateLastSyncedAt('product', productResult.lastUpdatedAt || syncStart);
+  } else {
+    logger.warn('Skipping product timestamp update due to failures', { failed: productResult.failed });
+  }
+  if (customerResult.failed === 0) {
+    await db.updateLastSyncedAt('customer', customerResult.lastUpdatedAt || syncStart);
+  } else {
+    logger.warn('Skipping customer timestamp update due to failures', { failed: customerResult.failed });
+  }
+  if (orderResult.failed === 0) {
+    await db.updateLastSyncedAt('order', orderResult.lastUpdatedAt || syncStart);
+  } else {
+    logger.warn('Skipping order timestamp update due to failures', { failed: orderResult.failed });
+  }
+
+  // 5. Process retry queue
+  await processRetryQueue(runId);
+
+  return { productResult, customerResult, orderResult };
+}
+
 export async function runFullSync() {
   if (syncInProgress) {
     logger.warn('Sync already in progress, skipping');
@@ -19,49 +57,23 @@ export async function runFullSync() {
   syncInProgress = true;
   const runId = uuidv4();
   const syncStart = new Date();
+  const timeoutMs = config.sync.timeoutMinutes * 60 * 1000;
 
   logger.info('=== Starting full sync ===', { runId });
 
   try {
-    // 1. Sync products first (orders reference them)
-    const productSince = await db.getLastSyncedAt('product');
-    const productResult = await syncProducts(productSince, runId);
-
-    // 2. Sync customers (orders reference them)
-    const customerSince = await db.getLastSyncedAt('customer');
-    const customerResult = await syncCustomers(customerSince, runId);
-
-    // 3. Sync orders last
-    const orderSince = await db.getLastSyncedAt('order');
-    const orderResult = await syncOrders(orderSince, runId);
-
-    // 4. Update sync timestamps only for entity types with zero failures
-    // Use lastUpdatedAt (high-water mark from processed records) when available,
-    // so that maxRecords-limited runs advance incrementally rather than jumping to now
-    if (productResult.failed === 0) {
-      await db.updateLastSyncedAt('product', productResult.lastUpdatedAt || syncStart);
-    } else {
-      logger.warn('Skipping product timestamp update due to failures', { failed: productResult.failed });
-    }
-    if (customerResult.failed === 0) {
-      await db.updateLastSyncedAt('customer', customerResult.lastUpdatedAt || syncStart);
-    } else {
-      logger.warn('Skipping customer timestamp update due to failures', { failed: customerResult.failed });
-    }
-    if (orderResult.failed === 0) {
-      await db.updateLastSyncedAt('order', orderResult.lastUpdatedAt || syncStart);
-    } else {
-      logger.warn('Skipping order timestamp update due to failures', { failed: orderResult.failed });
-    }
-
-    // 5. Process retry queue
-    await processRetryQueue(runId);
+    const results = await Promise.race([
+      runSyncBody(runId, syncStart),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Sync timed out after ${config.sync.timeoutMinutes} minutes`)), timeoutMs)
+      ),
+    ]);
 
     logger.info('=== Full sync complete ===', {
       runId,
-      products: productResult,
-      customers: customerResult,
-      orders: orderResult,
+      products: results.productResult,
+      customers: results.customerResult,
+      orders: results.orderResult,
       duration: `${((Date.now() - syncStart.getTime()) / 1000).toFixed(1)}s`,
     });
   } catch (err) {

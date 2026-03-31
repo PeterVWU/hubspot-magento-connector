@@ -14,7 +14,14 @@ const logger = winston.createLogger({
       format: winston.format.combine(
         winston.format.colorize(),
         winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+          let metaStr = '';
+          if (Object.keys(meta).length) {
+            try {
+              metaStr = ` ${JSON.stringify(meta)}`;
+            } catch {
+              metaStr = ' [meta serialization failed]';
+            }
+          }
           return `${timestamp} [${level}] ${message}${metaStr}`;
         }),
       ),

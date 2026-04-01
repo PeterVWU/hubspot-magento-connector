@@ -91,6 +91,8 @@ export async function runFullSync() {
     clearTimeout(watchdogTimer);
     syncInProgress = false;
     heartbeat();
+    // Direct stdout write — survives even if Winston transport dies
+    process.stdout.write(`[heartbeat] ${new Date().toISOString()} sync cycle done\n`);
   }
 }
 

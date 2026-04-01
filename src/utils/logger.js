@@ -12,7 +12,7 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
-        winston.format.colorize(),
+        winston.format.timestamp(),
         winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
           let metaStr = '';
           if (Object.keys(meta).length) {
@@ -38,6 +38,11 @@ const logger = winston.createLogger({
       maxFiles: 5,
     }),
   ],
+});
+
+// Prevent transport errors from silently killing logging
+logger.on('error', (err) => {
+  process.stderr.write(`[logger error] ${err.message}\n`);
 });
 
 export default logger;

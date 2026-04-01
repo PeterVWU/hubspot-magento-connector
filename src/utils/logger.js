@@ -1,48 +1,29 @@
-import winston from 'winston';
 import { config } from '../config/index.js';
 
-const logger = winston.createLogger({
-  level: config.log.level,
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json(),
-  ),
-  defaultMeta: { service: 'hubspot-magento-sync' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-          let metaStr = '';
-          if (Object.keys(meta).length) {
-            try {
-              metaStr = ` ${JSON.stringify(meta)}`;
-            } catch {
-              metaStr = ' [meta serialization failed]';
-            }
-          }
-          return `${timestamp} [${level}] ${message}${metaStr}`;
-        }),
-      ),
-    }),
-    new winston.transports.File({
-      filename: 'logs/error.log',
-      level: 'error',
-      maxsize: 10 * 1024 * 1024,
-      maxFiles: 5,
-    }),
-    new winston.transports.File({
-      filename: 'logs/combined.log',
-      maxsize: 10 * 1024 * 1024,
-      maxFiles: 5,
-    }),
-  ],
-});
+const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
+const configuredLevel = LEVELS[config.log.level] ?? LEVELS.info;
 
-// Prevent transport errors from silently killing logging
-logger.on('error', (err) => {
-  process.stderr.write(`[logger error] ${err.message}\n`);
-});
+function write(level, message, meta = {}) {
+  if (LEVELS[level] > configuredLevel) return;
+
+  let metaStr = '';
+  if (Object.keys(meta).length) {
+    try {
+      metaStr = ` ${JSON.stringify(meta)}`;
+    } catch {
+      metaStr = ' [meta serialization failed]';
+    }
+  }
+
+  const line = `${new Date().toISOString()} [${level}] ${message}${metaStr}\n`;
+  process.stdout.write(line);
+}
+
+const logger = {
+  error: (message, meta) => write('error', message, meta),
+  warn: (message, meta) => write('warn', message, meta),
+  info: (message, meta) => write('info', message, meta),
+  debug: (message, meta) => write('debug', message, meta),
+};
 
 export default logger;

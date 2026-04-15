@@ -108,6 +108,33 @@ export async function searchDealByOrderNumber(orderNumber) {
   return data.results[0] || null;
 }
 
+/**
+ * Returns contacts modified since the given Date, including their current
+ * hubspot_owner_id. Paginated; `lastmodifieddate` is a millisecond epoch in
+ * the HubSpot search API.
+ */
+export async function searchContactsModifiedSince(since) {
+  const results = [];
+  let after;
+  const sinceMs = since.getTime();
+  do {
+    await rateLimitDelay(true);
+    const body = {
+      filterGroups: [{
+        filters: [{ propertyName: 'lastmodifieddate', operator: 'GTE', value: String(sinceMs) }],
+      }],
+      properties: ['email', 'hubspot_owner_id', 'lastmodifieddate'],
+      sorts: [{ propertyName: 'lastmodifieddate', direction: 'ASCENDING' }],
+      limit: 100,
+      ...(after ? { after } : {}),
+    };
+    const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/contacts/search', body, { signal }));
+    results.push(...(data.results || []));
+    after = data.paging?.next?.after;
+  } while (after);
+  return results;
+}
+
 // --- Single Create/Update Operations ---
 
 export async function createContact(properties) {

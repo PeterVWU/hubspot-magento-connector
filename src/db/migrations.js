@@ -59,6 +59,9 @@ export async function runMigrations() {
 
       INSERT INTO sync_state (entity_type) VALUES ('customer'), ('product'), ('order')
         ON CONFLICT (entity_type) DO NOTHING;
+
+      INSERT INTO sync_state (entity_type, last_synced_at) VALUES ('owner_reverse', NOW())
+        ON CONFLICT (entity_type) DO NOTHING;
     `);
 
     // If SYNC_START_DATE is set, update any sync_state rows still at epoch

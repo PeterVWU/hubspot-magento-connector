@@ -4,6 +4,7 @@ import { config } from '../config/index.js';
 import { syncProducts } from './products.js';
 import { syncCustomers } from './customers.js';
 import { syncOrders } from './orders.js';
+import { syncOwnersReverse } from './owner-reverse.js';
 import { processRetryQueue } from './retry-queue.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
@@ -20,15 +21,22 @@ async function runSyncBody(runId, syncStart) {
   const productSince = await db.getLastSyncedAt('product');
   const productResult = await syncProducts(productSince, runId);
 
-  // 2. Sync customers (orders reference them)
+  // 2. Reverse-sync HubSpot contact owner → Magento customer salesrep.
+  // Runs BEFORE forward customer sync so that a HubSpot owner change is
+  // written to Magento first; otherwise forward sync would push the stale
+  // Magento salesrep back to HubSpot and clobber the user's change.
+  const ownerReverseSince = await db.getLastSyncedAt('owner_reverse');
+  const ownerReverseResult = await syncOwnersReverse(ownerReverseSince, runId);
+
+  // 3. Sync customers (orders reference them)
   const customerSince = await db.getLastSyncedAt('customer');
   const customerResult = await syncCustomers(customerSince, runId);
 
-  // 3. Sync orders last
+  // 4. Sync orders last
   const orderSince = await db.getLastSyncedAt('order');
   const orderResult = await syncOrders(orderSince, runId);
 
-  // 4. Update sync timestamps only for entity types with zero failures
+  // 5. Update sync timestamps only for entity types with zero failures
   // Use lastUpdatedAt (high-water mark from processed records) when available,
   // so that maxRecords-limited runs advance incrementally rather than jumping to now
   if (productResult.failed === 0) {
@@ -46,11 +54,16 @@ async function runSyncBody(runId, syncStart) {
   } else {
     logger.warn('Skipping order timestamp update due to failures', { failed: orderResult.failed });
   }
+  if (ownerReverseResult.failed === 0) {
+    await db.updateLastSyncedAt('owner_reverse', ownerReverseResult.lastModifiedAt || syncStart);
+  } else {
+    logger.warn('Skipping owner_reverse timestamp update due to failures', { failed: ownerReverseResult.failed });
+  }
 
-  // 5. Process retry queue
+  // 6. Process retry queue
   await processRetryQueue(runId);
 
-  return { productResult, customerResult, orderResult };
+  return { productResult, customerResult, orderResult, ownerReverseResult };
 }
 
 export async function runFullSync() {
@@ -82,6 +95,7 @@ export async function runFullSync() {
       products: results.productResult,
       customers: results.customerResult,
       orders: results.orderResult,
+      ownerReverse: results.ownerReverseResult,
       duration: `${((Date.now() - syncStart.getTime()) / 1000).toFixed(1)}s`,
     });
   } catch (err) {

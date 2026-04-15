@@ -127,6 +127,18 @@ export async function getProductsUpdatedSince(since) {
   return fetchAllPages('/products', filters, 'products', config.magento.maxRecordsPerSync);
 }
 
+export async function getCustomersByEmail(email) {
+  const filters = [
+    { field: 'email', value: email, condition: 'eq', group: 0, filterIdx: 0 },
+  ];
+  const query = buildSearchCriteria(filters, 50, 1);
+  const { data } = await withTimeout(
+    (signal) => client.get(`/customers/search?${query}`, { signal }),
+    config.magento.timeout,
+  );
+  return data.items || [];
+}
+
 export async function getCustomerById(customerId) {
   logger.debug('Fetching single customer', { customerId });
   const { data } = await withTimeout(
@@ -147,6 +159,27 @@ export async function getOrderById(orderId) {
   logger.debug('Fetching single order', { orderId });
   const { data } = await withTimeout(
     (signal) => client.get(`/orders/${orderId}`, { signal }),
+    config.magento.timeout,
+  );
+  return data;
+}
+
+export async function updateCustomerSalesrep(customerId, salesrepId) {
+  const existing = await getCustomerById(customerId);
+  logger.debug('Updating customer salesrep', { customerId, salesrepId });
+  const { data } = await withTimeout(
+    (signal) => client.put(`/customers/${customerId}`, {
+      customer: {
+        id: existing.id,
+        email: existing.email,
+        website_id: existing.website_id,
+        firstname: existing.firstname,
+        lastname: existing.lastname,
+        custom_attributes: [
+          { attribute_code: 'salesrep_rep_id', value: String(salesrepId) },
+        ],
+      },
+    }, { signal }),
     config.magento.timeout,
   );
   return data;

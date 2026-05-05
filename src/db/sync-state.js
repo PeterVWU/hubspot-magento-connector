@@ -42,6 +42,14 @@ export async function getMagentoIdByHubspotId(entityType, hubspotId) {
   return rows[0]?.magento_id || null;
 }
 
+export async function getMagentoIdsByHubspotId(entityType, hubspotId) {
+  const { rows } = await pool.query(
+    'SELECT magento_id FROM entity_mapping WHERE entity_type = $1 AND hubspot_id = $2',
+    [entityType, String(hubspotId)],
+  );
+  return rows.map(r => r.magento_id);
+}
+
 export async function getHubspotIdsBatch(entityType, magentoIds) {
   if (!magentoIds.length) return new Map();
   const { rows } = await pool.query(

@@ -4,6 +4,26 @@ import * as db from '../db/sync-state.js';
 import { OWNER_SALESREP_MAP } from '../config/salesrep-mapping.js';
 import logger from '../utils/logger.js';
 
+async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context) {
+  const existing = await magento.getCustomerById(magentoCustomerId);
+  const currentSalesrep = (existing.custom_attributes || [])
+    .find(a => a.attribute_code === 'salesrep_rep_id')?.value;
+
+  const normalize = (v) => { const s = String(v ?? ''); return s === '' ? '0' : s; };
+  if (normalize(currentSalesrep) === normalize(targetSalesrepId)) {
+    return 'skipped';
+  }
+
+  await magento.updateCustomerSalesrep(magentoCustomerId, targetSalesrepId);
+  logger.info('Reverse-synced owner to salesrep', {
+    ...context,
+    magentoId: magentoCustomerId,
+    from: currentSalesrep,
+    to: targetSalesrepId,
+  });
+  return 'updated';
+}
+
 /**
  * Reverse sync: HubSpot contact owner → Magento customer salesrep_rep_id.
  *
@@ -46,13 +66,11 @@ export async function syncOwnersReverse(since, runId) {
     }
 
     try {
-      let magentoCustomerId = await db.getMagentoIdByHubspotId('customer', contact.id);
-      let existing = null;
+      let magentoCustomerIds = await db.getMagentoIdsByHubspotId('customer', contact.id);
 
-      if (!magentoCustomerId) {
-        // Fallback: look up Magento customer by email, then backfill the mapping.
-        // If the email is shared across multiple stores, prefer the Main Website
-        // (website_id=1) account so we don't write to duplicate per-store accounts.
+      if (magentoCustomerIds.length === 0) {
+        // Fallback: look up Magento customer by email, then backfill mappings for
+        // all matching store accounts so future syncs use the fast DB path.
         const email = contact.properties?.email;
         if (!email) {
           skipped++;
@@ -66,38 +84,21 @@ export async function syncOwnersReverse(since, runId) {
           skipped++;
           continue;
         }
-        existing = matches.length > 1
-          ? (matches.find(c => c.website_id === 1) || matches[0])
-          : matches[0];
-        magentoCustomerId = existing.id;
-        await db.upsertMapping('customer', magentoCustomerId, contact.id);
-      } else {
-        existing = await magento.getCustomerById(magentoCustomerId);
+        for (const match of matches) {
+          await db.upsertMapping('customer', match.id, contact.id);
+        }
+        magentoCustomerIds = matches.map(m => String(m.id));
       }
 
-      const currentSalesrep = (existing.custom_attributes || [])
-        .find(a => a.attribute_code === 'salesrep_rep_id')?.value;
-
-      // Treat null/undefined/""/"0" as equivalent "unassigned" states so we
-      // don't churn when HubSpot owner is blank and Magento is already empty.
-      const normalize = (v) => {
-        const s = String(v ?? '');
-        return s === '' ? '0' : s;
-      };
-      if (normalize(currentSalesrep) === normalize(targetSalesrepId)) {
-        skipped++;
-        continue;
+      for (const magentoCustomerId of magentoCustomerIds) {
+        const outcome = await updateScopeIfNeeded(
+          magentoCustomerId,
+          targetSalesrepId,
+          { hubspotId: contact.id, ownerId, runId },
+        );
+        if (outcome === 'updated') updated++;
+        else skipped++;
       }
-
-      await magento.updateCustomerSalesrep(magentoCustomerId, targetSalesrepId);
-      updated++;
-      logger.info('Reverse-synced owner to salesrep', {
-        hubspotId: contact.id,
-        magentoId: magentoCustomerId,
-        from: currentSalesrep,
-        to: targetSalesrepId,
-        runId,
-      });
     } catch (err) {
       failed++;
       logger.error('Failed to reverse-sync owner', {

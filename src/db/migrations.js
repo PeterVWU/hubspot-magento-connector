@@ -25,6 +25,9 @@ export async function runMigrations() {
       CREATE INDEX IF NOT EXISTS idx_entity_mapping_lookup
         ON entity_mapping(entity_type, magento_id);
 
+      CREATE INDEX IF NOT EXISTS idx_entity_mapping_reverse_lookup
+        ON entity_mapping(entity_type, hubspot_id);
+
       CREATE TABLE IF NOT EXISTS sync_retry_queue (
         id SERIAL PRIMARY KEY,
         entity_type VARCHAR(50) NOT NULL,

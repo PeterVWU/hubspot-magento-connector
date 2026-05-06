@@ -23,7 +23,17 @@ async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context)
     return 'skipped';
   }
 
-  await magento.updateCustomerSalesrep(magentoCustomerId, targetSalesrepId);
+  try {
+    await magento.updateCustomerSalesrep(magentoCustomerId, targetSalesrepId, existing);
+  } catch (err) {
+    if (err.response?.status === 400) {
+      logger.warn('Skipping customer with invalid Magento data (400)', {
+        magentoId: magentoCustomerId, error: err.response?.data?.message, ...context,
+      });
+      return 'skipped';
+    }
+    throw err;
+  }
   logger.info('Reverse-synced owner to salesrep', {
     ...context,
     magentoId: magentoCustomerId,
@@ -55,7 +65,7 @@ export async function syncOwnersReverse(since, runId) {
   for (const contact of contacts) {
     const ownerId = contact.properties?.hubspot_owner_id;
     const modifiedAt = contact.properties?.lastmodifieddate
-      ? new Date(contact.properties.lastmodifieddate)
+      ? new Date(Number(contact.properties.lastmodifieddate))
       : null;
     if (modifiedAt && (!lastModifiedAt || modifiedAt > lastModifiedAt)) {
       lastModifiedAt = modifiedAt;
@@ -122,6 +132,10 @@ export async function syncOwnersReverse(since, runId) {
   logger.info('Owner reverse sync complete', { updated, skipped, failed, total: contacts.length, runId });
   await db.logSync(runId, 'owner_reverse', 'info',
     `Reverse-synced owners: ${updated} updated, ${skipped} skipped, ${failed} failed`);
+
+  if (failed === 0 && lastModifiedAt) {
+    await db.updateLastSyncedAt('owner_reverse', lastModifiedAt);
+  }
 
   return { updated, skipped, failed, lastModifiedAt };
 }

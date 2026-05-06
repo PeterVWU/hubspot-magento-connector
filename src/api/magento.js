@@ -164,8 +164,8 @@ export async function getOrderById(orderId) {
   return data;
 }
 
-export async function updateCustomerSalesrep(customerId, salesrepId) {
-  const existing = await getCustomerById(customerId);
+export async function updateCustomerSalesrep(customerId, salesrepId, existing = null) {
+  if (!existing) existing = await getCustomerById(customerId);
   logger.debug('Updating customer salesrep', { customerId, salesrepId });
   const { data } = await withTimeout(
     (signal) => client.put(`/customers/${customerId}`, {

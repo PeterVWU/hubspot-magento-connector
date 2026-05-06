@@ -54,11 +54,8 @@ async function runSyncBody(runId, syncStart) {
   } else {
     logger.warn('Skipping order timestamp update due to failures', { failed: orderResult.failed });
   }
-  if (ownerReverseResult.failed === 0) {
-    await db.updateLastSyncedAt('owner_reverse', ownerReverseResult.lastModifiedAt || syncStart);
-  } else {
-    logger.warn('Skipping owner_reverse timestamp update due to failures', { failed: ownerReverseResult.failed });
-  }
+  // owner_reverse updates its own timestamp internally so progress is saved
+  // even when the outer sync times out.
 
   // 6. Process retry queue
   await processRetryQueue(runId);

@@ -144,6 +144,27 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     );
   });
 
+  it('skips concurrent calls while a previous run is still in progress', async () => {
+    let unblock;
+    const blockingSearch = new Promise(r => { unblock = r; });
+    mockSearchContactsModifiedSince
+      .mockReturnValueOnce(blockingSearch)
+      .mockResolvedValue([]);
+
+    const firstRun = syncOwnersReverse(since, 'run-concurrent-1');
+
+    try {
+      const secondResult = await syncOwnersReverse(since, 'run-concurrent-2');
+      expect(secondResult.updated).toBe(0);
+      expect(secondResult.failed).toBe(0);
+      // search was only called for the first run, not the second
+      expect(mockSearchContactsModifiedSince).toHaveBeenCalledTimes(1);
+    } finally {
+      unblock([]);
+      await firstRun;
+    }
+  });
+
   it('does not save the timestamp when there are failures', async () => {
     mockSearchContactsModifiedSince.mockResolvedValueOnce([
       makeContact('hs-6', 'owner-1', 'fail@test.com'),

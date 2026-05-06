@@ -57,11 +57,14 @@ client.interceptors.response.use(
       return client.request(error.config);
     }
 
-    logger.error('HubSpot API error', {
-      status,
-      url,
-      data: JSON.stringify(error.response?.data),
-    });
+    // 409 = already exists; callers handle it, no need to log as error
+    if (status !== 409) {
+      logger.error('HubSpot API error', {
+        status,
+        url,
+        data: JSON.stringify(error.response?.data),
+      });
+    }
     throw error;
   },
 );
@@ -128,9 +131,21 @@ export async function searchContactsModifiedSince(since) {
       limit: 100,
       ...(after ? { after } : {}),
     };
-    const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/contacts/search', body, { signal }));
-    results.push(...(data.results || []));
-    after = data.paging?.next?.after;
+    try {
+      const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/contacts/search', body, { signal }));
+      results.push(...(data.results || []));
+      after = data.paging?.next?.after;
+    } catch (err) {
+      // HubSpot search caps at 10,000 results; a 400 mid-pagination means we've
+      // hit that limit. Return what we have so the caller can advance its cursor.
+      if (err.response?.status === 400 && after) {
+        logger.warn('HubSpot search 10k cap reached, returning partial results', {
+          collected: results.length,
+        });
+        break;
+      }
+      throw err;
+    }
   } while (after);
   return results;
 }

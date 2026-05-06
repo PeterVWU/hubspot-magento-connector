@@ -165,9 +165,10 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     }
   });
 
-  it('does not save the timestamp when there are failures', async () => {
+  it('saves the timestamp even when there are transient failures', async () => {
+    const lastModifiedMs = '1704153600000'; // 2024-01-02
     mockSearchContactsModifiedSince.mockResolvedValueOnce([
-      makeContact('hs-6', 'owner-1', 'fail@test.com'),
+      makeContact('hs-6', 'owner-1', 'fail@test.com', lastModifiedMs),
     ]);
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['600']);
     mockGetCustomerById.mockResolvedValueOnce({ id: 600, website_id: 1, custom_attributes: [] });
@@ -176,7 +177,13 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     const result = await syncOwnersReverse(since, 'run-6');
 
     expect(result.failed).toBe(1);
-    expect(mockUpdateLastSyncedAt).not.toHaveBeenCalled();
+    // Transient errors (ECONNRESET etc.) must not block cursor advancement —
+    // 404/400 are already classified as skips, so only network errors reach
+    // failed, and re-processing 10k contacts forever is worse than skipping 3.
+    expect(mockUpdateLastSyncedAt).toHaveBeenCalledWith(
+      'owner_reverse',
+      new Date(Number(lastModifiedMs)),
+    );
   });
 
   it('updates the single Magento record for a single-scope customer', async () => {

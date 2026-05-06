@@ -141,7 +141,10 @@ export async function syncOwnersReverse(since, runId) {
     await db.logSync(runId, 'owner_reverse', 'info',
       `Reverse-synced owners: ${updated} updated, ${skipped} skipped, ${failed} failed`);
 
-    if (failed === 0 && lastModifiedAt) {
+    if (lastModifiedAt) {
+      if (failed > 0) {
+        logger.warn('Owner reverse sync had failures; advancing cursor anyway', { failed, runId });
+      }
       await db.updateLastSyncedAt('owner_reverse', lastModifiedAt);
     }
 

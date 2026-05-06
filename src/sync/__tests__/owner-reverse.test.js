@@ -95,6 +95,23 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     expect(result.skipped).toBe(1);
   });
 
+  it('skips a deleted Magento customer (404) without counting it as a failure', async () => {
+    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+      makeContact('hs-3', 'owner-1', 'deleted@test.com'),
+    ]);
+    mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['266228']);
+    const notFound = Object.assign(new Error('Not Found'), {
+      response: { status: 404 },
+    });
+    mockGetCustomerById.mockRejectedValueOnce(notFound);
+
+    const result = await syncOwnersReverse(since, 'run-3');
+
+    expect(mockUpdateCustomerSalesrep).not.toHaveBeenCalled();
+    expect(result.failed).toBe(0);
+    expect(result.skipped).toBe(1);
+  });
+
   it('updates the single Magento record for a single-scope customer', async () => {
     mockSearchContactsModifiedSince.mockResolvedValueOnce([
       makeContact('hs-2', 'owner-1', 'single@test.com'),

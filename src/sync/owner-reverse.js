@@ -5,7 +5,16 @@ import { OWNER_SALESREP_MAP } from '../config/salesrep-mapping.js';
 import logger from '../utils/logger.js';
 
 async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context) {
-  const existing = await magento.getCustomerById(magentoCustomerId);
+  let existing;
+  try {
+    existing = await magento.getCustomerById(magentoCustomerId);
+  } catch (err) {
+    if (err.response?.status === 404) {
+      logger.debug('Magento customer not found (deleted), skipping', { magentoId: magentoCustomerId, ...context });
+      return 'skipped';
+    }
+    throw err;
+  }
   const currentSalesrep = (existing.custom_attributes || [])
     .find(a => a.attribute_code === 'salesrep_rep_id')?.value;
 

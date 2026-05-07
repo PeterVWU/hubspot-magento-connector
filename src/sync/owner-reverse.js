@@ -2,6 +2,7 @@ import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import * as db from '../db/sync-state.js';
 import { OWNER_SALESREP_MAP } from '../config/salesrep-mapping.js';
+import { config } from '../config/index.js';
 import logger from '../utils/logger.js';
 
 let ownerReverseInProgress = false;
@@ -59,14 +60,15 @@ async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context)
 export async function syncOwnersReverse(since, runId) {
   if (ownerReverseInProgress) {
     logger.warn('Owner reverse sync already in progress, skipping', { runId });
-    return { updated: 0, skipped: 0, failed: 0, quarantined: 0, lastModifiedAt: null };
+    return { updated: 0, skipped: 0, failed: 0, quarantined: 0, hasMore: false, lastModifiedAt: null };
   }
   ownerReverseInProgress = true;
   try {
     logger.info('Starting owner reverse sync', { since: since.toISOString(), runId });
 
-    const contacts = await hubspot.searchContactsModifiedSince(since);
-    logger.info(`Found ${contacts.length} modified contacts`, { runId });
+    const batchSize = config.sync.ownerReverseBatchSize;
+    const { contacts, hasMore } = await hubspot.searchContactsModifiedSince(since, batchSize);
+    logger.info(`Found ${contacts.length} modified contacts`, { runId, hasMore, batchSize });
 
     let updated = 0;
     let skipped = 0;
@@ -142,9 +144,9 @@ export async function syncOwnersReverse(since, runId) {
       }
     }
 
-    logger.info('Owner reverse sync complete', { updated, skipped, failed, quarantined, total: contacts.length, runId });
+    logger.info('Owner reverse sync complete', { updated, skipped, failed, quarantined, total: contacts.length, hasMore, runId });
     await db.logSync(runId, 'owner_reverse', 'info',
-      `Reverse-synced owners: ${updated} updated, ${skipped} skipped, ${failed} failed, ${quarantined} quarantined`);
+      `Reverse-synced owners: ${updated} updated, ${skipped} skipped, ${failed} failed, ${quarantined} quarantined${hasMore ? ' (more pending; backlog)' : ''}`);
 
     if (lastModifiedAt) {
       if (failed > 0) {
@@ -153,7 +155,7 @@ export async function syncOwnersReverse(since, runId) {
       await db.updateLastSyncedAt('owner_reverse', lastModifiedAt);
     }
 
-    return { updated, skipped, failed, quarantined, lastModifiedAt };
+    return { updated, skipped, failed, quarantined, hasMore, lastModifiedAt };
   } finally {
     ownerReverseInProgress = false;
   }

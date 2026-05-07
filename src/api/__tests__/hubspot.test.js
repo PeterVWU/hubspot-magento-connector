@@ -36,42 +36,43 @@ const since = new Date('2026-01-01T00:00:00Z');
 describe('searchContactsModifiedSince – pagination cap', () => {
   beforeEach(() => mockPost.mockReset());
 
-  it('returns results from page 1 when no further pages exist', async () => {
-    mockPost.mockResolvedValueOnce({
+  function pageOf(...ids) {
+    return {
       data: {
-        results: [{ id: '1', properties: { email: 'a@b.com', hubspot_owner_id: '10', lastmodifieddate: '1704067200000' } }],
+        results: ids.map(id => ({
+          id, properties: { email: `${id}@b.com`, hubspot_owner_id: '10', lastmodifieddate: String(1704067200000 + Number(id)) },
+        })),
         paging: null,
       },
-    });
+    };
+  }
+  function pageWithNext(after, ...ids) {
+    const r = pageOf(...ids);
+    r.data.paging = { next: { after } };
+    return r;
+  }
 
-    const results = await searchContactsModifiedSince(since);
+  it('returns hasMore=false when only one page exists', async () => {
+    mockPost.mockResolvedValueOnce(pageOf('1'));
 
-    expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('1');
+    const { contacts, hasMore } = await searchContactsModifiedSince(since);
+
+    expect(contacts).toHaveLength(1);
+    expect(hasMore).toBe(false);
   });
 
-  it('stops pagination and returns collected results when a mid-pagination 400 occurs', async () => {
-    // Page 1 succeeds with 2 contacts
-    mockPost.mockResolvedValueOnce({
-      data: {
-        results: [
-          { id: '1', properties: { email: 'a@b.com', hubspot_owner_id: '10', lastmodifieddate: '1704067200000' } },
-          { id: '2', properties: { email: 'b@b.com', hubspot_owner_id: '10', lastmodifieddate: '1704067200001' } },
-        ],
-        paging: { next: { after: '100' } },
-      },
-    });
-    // Page 2 returns 400 (HubSpot 10k cap)
+  it('stops pagination and flags hasMore when a mid-pagination 400 occurs (10k cap)', async () => {
+    mockPost.mockResolvedValueOnce(pageWithNext('100', '1', '2'));
     const apiError = Object.assign(new Error('Bad Request'), {
       response: { status: 400, data: { message: 'There was a problem with the request.' } },
       config: { url: '/crm/v3/objects/contacts/search', _retryCount: 0 },
     });
     mockPost.mockRejectedValueOnce(apiError);
 
-    const results = await searchContactsModifiedSince(since);
+    const { contacts, hasMore } = await searchContactsModifiedSince(since);
 
-    expect(results).toHaveLength(2);
-    expect(results.map(r => r.id)).toEqual(['1', '2']);
+    expect(contacts.map(r => r.id)).toEqual(['1', '2']);
+    expect(hasMore).toBe(true);
   });
 
   it('throws when a 400 occurs on the first page (genuine request error)', async () => {
@@ -82,6 +83,29 @@ describe('searchContactsModifiedSince – pagination cap', () => {
     mockPost.mockRejectedValueOnce(apiError);
 
     await expect(searchContactsModifiedSince(since)).rejects.toThrow('Bad Request');
+  });
+
+  it('stops paginating once maxResults is reached and reports hasMore=true', async () => {
+    // Page 1 (100 contacts) brings total to 100; pages remain. Cap at 100 -> stop.
+    const ids = Array.from({ length: 100 }, (_, i) => String(i + 1));
+    mockPost.mockResolvedValueOnce(pageWithNext('next-cursor', ...ids));
+
+    const { contacts, hasMore } = await searchContactsModifiedSince(since, 100);
+
+    expect(contacts).toHaveLength(100);
+    expect(hasMore).toBe(true);
+    expect(mockPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps paginating past maxResults if the API has no more pages (hasMore=false)', async () => {
+    // Page 1 returns 50 contacts, no next page. Cap at 100 doesn't trigger.
+    const ids = Array.from({ length: 50 }, (_, i) => String(i + 1));
+    mockPost.mockResolvedValueOnce(pageOf(...ids));
+
+    const { contacts, hasMore } = await searchContactsModifiedSince(since, 100);
+
+    expect(contacts).toHaveLength(50);
+    expect(hasMore).toBe(false);
   });
 });
 

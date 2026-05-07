@@ -35,6 +35,10 @@ vi.mock('../../config/salesrep-mapping.js', () => ({
   OWNER_SALESREP_MAP: { 'owner-1': '42' },
 }));
 
+vi.mock('../../config/index.js', () => ({
+  config: { sync: { ownerReverseBatchSize: 500 } },
+}));
+
 vi.mock('../../utils/logger.js', () => ({
   default: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -61,9 +65,9 @@ describe('syncOwnersReverse – multi-scope customers', () => {
   });
 
   it('updates all Magento customer records when a contact maps to multiple scopes', async () => {
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-1', 'owner-1'),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['100', '200']);
     const customer100 = { id: 100, website_id: 1, custom_attributes: [] };
     const customer200 = { id: 200, website_id: 2, custom_attributes: [] };
@@ -81,9 +85,9 @@ describe('syncOwnersReverse – multi-scope customers', () => {
   });
 
   it('skips scopes already assigned the correct salesrep', async () => {
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-1', 'owner-1'),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['100', '200']);
     mockGetCustomerById
       .mockResolvedValueOnce({
@@ -101,9 +105,9 @@ describe('syncOwnersReverse – multi-scope customers', () => {
   });
 
   it('skips a deleted Magento customer (404) without counting it as a failure', async () => {
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-3', 'owner-1', 'deleted@test.com'),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['266228']);
     mockGetCustomerById.mockRejectedValueOnce(
       Object.assign(new Error('Not Found'), { response: { status: 404 } }),
@@ -117,9 +121,9 @@ describe('syncOwnersReverse – multi-scope customers', () => {
   });
 
   it('quarantines a customer with invalid Magento data (400) instead of silently dropping it', async () => {
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-4', 'owner-1', 'baddata@test.com'),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['42469']);
     mockGetCustomerById.mockResolvedValueOnce({ id: 42469, website_id: 1, custom_attributes: [] });
     mockUpdateCustomerSalesrep.mockRejectedValueOnce(
@@ -140,9 +144,9 @@ describe('syncOwnersReverse – multi-scope customers', () => {
 
   it('saves the owner_reverse timestamp to DB after a successful run', async () => {
     const lastModifiedMs = '1704153600000'; // 2024-01-02
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-5', 'owner-1', 'ok@test.com', lastModifiedMs),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['500']);
     mockGetCustomerById.mockResolvedValueOnce({ id: 500, website_id: 1, custom_attributes: [] });
 
@@ -159,7 +163,7 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     const blockingSearch = new Promise(r => { unblock = r; });
     mockSearchContactsModifiedSince
       .mockReturnValueOnce(blockingSearch)
-      .mockResolvedValue([]);
+      .mockResolvedValue({ contacts: [], hasMore: false });
 
     const firstRun = syncOwnersReverse(since, 'run-concurrent-1');
 
@@ -170,16 +174,16 @@ describe('syncOwnersReverse – multi-scope customers', () => {
       // search was only called for the first run, not the second
       expect(mockSearchContactsModifiedSince).toHaveBeenCalledTimes(1);
     } finally {
-      unblock([]);
+      unblock({ contacts: [], hasMore: false });
       await firstRun;
     }
   });
 
   it('saves the timestamp even when there are transient failures', async () => {
     const lastModifiedMs = '1704153600000'; // 2024-01-02
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-6', 'owner-1', 'fail@test.com', lastModifiedMs),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['600']);
     mockGetCustomerById.mockResolvedValueOnce({ id: 600, website_id: 1, custom_attributes: [] });
     mockUpdateCustomerSalesrep.mockRejectedValueOnce(new Error('Network error'));
@@ -196,10 +200,26 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     );
   });
 
+  it('passes the configured batch size to the search and propagates hasMore', async () => {
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({
+      contacts: [makeContact('hs-cap', 'owner-1', 'cap@test.com', '1704067200500')],
+      hasMore: true,
+    });
+    mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['800']);
+    mockGetCustomerById.mockResolvedValueOnce({ id: 800, custom_attributes: [] });
+
+    const result = await syncOwnersReverse(since, 'run-cap');
+
+    expect(mockSearchContactsModifiedSince).toHaveBeenCalledWith(since, 500);
+    expect(result.hasMore).toBe(true);
+    // Cursor still advances on a capped batch so the next cycle picks up where we left off.
+    expect(mockUpdateLastSyncedAt).toHaveBeenCalledWith('owner_reverse', new Date(1704067200500));
+  });
+
   it('clears any prior quarantine row when an update succeeds', async () => {
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-7', 'owner-1', 'recovered@test.com'),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['700']);
     mockGetCustomerById.mockResolvedValueOnce({ id: 700, website_id: 1, custom_attributes: [] });
 
@@ -209,9 +229,9 @@ describe('syncOwnersReverse – multi-scope customers', () => {
   });
 
   it('updates the single Magento record for a single-scope customer', async () => {
-    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
       makeContact('hs-2', 'owner-1', 'single@test.com'),
-    ]);
+    ], hasMore: false });
     mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['300']);
     const customer = { id: 300, website_id: 2, custom_attributes: [] };
     mockGetCustomerById.mockResolvedValueOnce(customer);

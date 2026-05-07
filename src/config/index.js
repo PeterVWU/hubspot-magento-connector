@@ -33,6 +33,7 @@ export const config = {
   sync: {
     intervalMinutes: parseInt(process.env.SYNC_INTERVAL_MINUTES || '5', 10),
     timeoutMinutes: parseInt(process.env.SYNC_TIMEOUT_MINUTES || '10', 10),
+    ownerReverseBatchSize: parseInt(process.env.OWNER_REVERSE_BATCH_SIZE || '500', 10),
     startDate: process.env.SYNC_START_DATE
       ? new Date(process.env.SYNC_START_DATE)
       : null,

@@ -112,13 +112,20 @@ export async function searchDealByOrderNumber(orderNumber) {
 }
 
 /**
- * Returns contacts modified since the given Date, including their current
- * hubspot_owner_id. Paginated; `lastmodifieddate` is a millisecond epoch in
- * the HubSpot search API.
+ * Returns { contacts, hasMore } for contacts modified since the given Date,
+ * including current hubspot_owner_id. Sorted ASC by lastmodifieddate so the
+ * caller's cursor advances exactly by the batch processed.
+ *
+ * `maxResults` is a soft cap: pagination stops once at least that many have
+ * been collected. Final count may overshoot by up to one page (100).
+ * `hasMore` is true when more contacts remain after the returned batch
+ * (either because the cap was hit or because the 10k search ceiling was hit
+ * mid-pagination), so callers can log and keep up.
  */
-export async function searchContactsModifiedSince(since) {
-  const results = [];
+export async function searchContactsModifiedSince(since, maxResults = 0) {
+  const contacts = [];
   let after;
+  let hasMore = false;
   const sinceMs = since.getTime();
   do {
     await rateLimitDelay(true);
@@ -133,21 +140,26 @@ export async function searchContactsModifiedSince(since) {
     };
     try {
       const { data } = await hsRequest((signal) => client.post('/crm/v3/objects/contacts/search', body, { signal }));
-      results.push(...(data.results || []));
+      contacts.push(...(data.results || []));
       after = data.paging?.next?.after;
     } catch (err) {
       // HubSpot search caps at 10,000 results; a 400 mid-pagination means we've
       // hit that limit. Return what we have so the caller can advance its cursor.
       if (err.response?.status === 400 && after) {
         logger.warn('HubSpot search 10k cap reached, returning partial results', {
-          collected: results.length,
+          collected: contacts.length,
         });
+        hasMore = true;
         break;
       }
       throw err;
     }
+    if (maxResults > 0 && contacts.length >= maxResults && after) {
+      hasMore = true;
+      break;
+    }
   } while (after);
-  return results;
+  return { contacts, hasMore };
 }
 
 // --- Single Create/Update Operations ---

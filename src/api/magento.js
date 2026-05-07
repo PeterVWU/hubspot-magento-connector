@@ -59,11 +59,12 @@ async function fetchAllPages(endpoint, filters, entityName, maxRecords = 0) {
       config.magento.timeout,
     );
 
+    const items = data.items || [];
     totalCount = data.total_count;
-    allItems = allItems.concat(data.items || []);
+    allItems = allItems.concat(items);
 
     logger.info(`Fetched ${entityName} page ${currentPage}`, {
-      pageItems: (data.items || []).length,
+      pageItems: items.length,
       totalSoFar: allItems.length,
       totalCount,
     });
@@ -71,6 +72,18 @@ async function fetchAllPages(endpoint, filters, entityName, maxRecords = 0) {
     if (maxRecords > 0 && allItems.length >= maxRecords) {
       allItems = allItems.slice(0, maxRecords);
       logger.info(`Reached max records limit for ${entityName}`, { maxRecords, totalAvailable: totalCount });
+      break;
+    }
+
+    // Defensive: if Magento reports total_count > collected but returns an
+    // empty page, the do/while condition can never become false. Stop and
+    // let the next sync cycle pick up any remaining records via its cursor.
+    if (items.length === 0) {
+      if (allItems.length < totalCount) {
+        logger.warn(`${entityName} pagination stopped early: empty page despite totalCount > collected`, {
+          currentPage, totalSoFar: allItems.length, totalCount,
+        });
+      }
       break;
     }
 

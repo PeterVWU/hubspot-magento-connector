@@ -78,9 +78,8 @@ export async function syncOwnersReverse(since, runId) {
 
     for (const contact of contacts) {
       const ownerId = contact.properties?.hubspot_owner_id;
-      const modifiedAt = contact.properties?.lastmodifieddate
-        ? new Date(Number(contact.properties.lastmodifieddate))
-        : null;
+      const lastmodMs = Number(contact.properties?.lastmodifieddate);
+      const modifiedAt = Number.isFinite(lastmodMs) ? new Date(lastmodMs) : null;
       if (modifiedAt && (!lastModifiedAt || modifiedAt > lastModifiedAt)) {
         lastModifiedAt = modifiedAt;
       }

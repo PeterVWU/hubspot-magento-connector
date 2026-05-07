@@ -200,6 +200,31 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     );
   });
 
+  it('ignores contacts with non-numeric lastmodifieddate when advancing the cursor', async () => {
+    // Mixed batch: one bad timestamp followed by one good one. The bad one
+    // must not poison lastModifiedAt — postgres rejects Invalid Date.
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({
+      contacts: [
+        makeContact('hs-bad',  'owner-1', 'bad@test.com',  'not-a-number'),
+        makeContact('hs-good', 'owner-1', 'good@test.com', '1704153600000'),
+      ],
+      hasMore: false,
+    });
+    mockGetMagentoIdsByHubspotId
+      .mockResolvedValueOnce(['900'])
+      .mockResolvedValueOnce(['901']);
+    mockGetCustomerById
+      .mockResolvedValueOnce({ id: 900, custom_attributes: [] })
+      .mockResolvedValueOnce({ id: 901, custom_attributes: [] });
+
+    await syncOwnersReverse(since, 'run-bad-date');
+
+    expect(mockUpdateLastSyncedAt).toHaveBeenCalledWith(
+      'owner_reverse',
+      new Date(1704153600000),
+    );
+  });
+
   it('passes the configured batch size to the search and propagates hasMore', async () => {
     mockSearchContactsModifiedSince.mockResolvedValueOnce({
       contacts: [makeContact('hs-cap', 'owner-1', 'cap@test.com', '1704067200500')],

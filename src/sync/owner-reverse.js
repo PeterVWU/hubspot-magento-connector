@@ -7,6 +7,19 @@ import logger from '../utils/logger.js';
 
 let ownerReverseInProgress = false;
 
+// HubSpot returns `lastmodifieddate` as either a millisecond-epoch string
+// or an ISO 8601 datetime string depending on the API surface and the
+// account. Try numeric first, fall back to Date.parse, return null for
+// anything that isn't a real timestamp so the cursor never advances to
+// Invalid Date.
+function parseHubspotTimestamp(v) {
+  if (!v) return null;
+  const n = Number(v);
+  if (Number.isFinite(n) && n > 0) return new Date(n);
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? new Date(t) : null;
+}
+
 async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context) {
   let existing;
   try {
@@ -78,8 +91,7 @@ export async function syncOwnersReverse(since, runId) {
 
     for (const contact of contacts) {
       const ownerId = contact.properties?.hubspot_owner_id;
-      const lastmodMs = Number(contact.properties?.lastmodifieddate);
-      const modifiedAt = Number.isFinite(lastmodMs) ? new Date(lastmodMs) : null;
+      const modifiedAt = parseHubspotTimestamp(contact.properties?.lastmodifieddate);
       if (modifiedAt && (!lastModifiedAt || modifiedAt > lastModifiedAt)) {
         lastModifiedAt = modifiedAt;
       }

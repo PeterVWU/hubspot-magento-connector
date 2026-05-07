@@ -200,6 +200,24 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     );
   });
 
+  it('parses ISO 8601 lastmodifieddate strings (CRM v3 search response format)', async () => {
+    // HubSpot CRM v3 returns lastmodifieddate as an ISO string for some
+    // accounts; the cursor must still advance correctly.
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({
+      contacts: [makeContact('hs-iso', 'owner-1', 'iso@test.com', '2024-01-02T00:00:00.000Z')],
+      hasMore: false,
+    });
+    mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['910']);
+    mockGetCustomerById.mockResolvedValueOnce({ id: 910, custom_attributes: [] });
+
+    await syncOwnersReverse(since, 'run-iso');
+
+    expect(mockUpdateLastSyncedAt).toHaveBeenCalledWith(
+      'owner_reverse',
+      new Date('2024-01-02T00:00:00.000Z'),
+    );
+  });
+
   it('ignores contacts with non-numeric lastmodifieddate when advancing the cursor', async () => {
     // Mixed batch: one bad timestamp followed by one good one. The bad one
     // must not poison lastModifiedAt — postgres rejects Invalid Date.

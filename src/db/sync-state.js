@@ -95,6 +95,42 @@ export async function removeRetryItem(id) {
   await pool.query('DELETE FROM sync_retry_queue WHERE id = $1', [id]);
 }
 
+export async function quarantineOwnerReverse(hubspotId, magentoId, targetSalesrepId, errorMessage) {
+  await pool.query(
+    `INSERT INTO owner_reverse_quarantine
+       (hubspot_id, magento_id, target_salesrep_id, error_message)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (hubspot_id, magento_id) DO UPDATE SET
+       target_salesrep_id = EXCLUDED.target_salesrep_id,
+       error_message      = EXCLUDED.error_message,
+       attempts           = owner_reverse_quarantine.attempts + 1,
+       last_attempted_at  = NOW(),
+       next_retry_at      = NOW() + (
+         LEAST(owner_reverse_quarantine.attempts + 1, 24)
+         || ' hours')::INTERVAL`,
+    [String(hubspotId), String(magentoId), String(targetSalesrepId), errorMessage],
+  );
+}
+
+export async function getDueQuarantinedOwnerReverse(limit = 50) {
+  const { rows } = await pool.query(
+    `SELECT hubspot_id, magento_id, target_salesrep_id, error_message, attempts
+     FROM owner_reverse_quarantine
+     WHERE next_retry_at <= NOW()
+     ORDER BY next_retry_at ASC
+     LIMIT $1`,
+    [limit],
+  );
+  return rows;
+}
+
+export async function removeQuarantinedOwnerReverse(hubspotId, magentoId) {
+  await pool.query(
+    'DELETE FROM owner_reverse_quarantine WHERE hubspot_id = $1 AND magento_id = $2',
+    [String(hubspotId), String(magentoId)],
+  );
+}
+
 export async function logSync(runId, entityType, level, message, metadata = null) {
   await pool.query(
     `INSERT INTO sync_log (run_id, entity_type, level, message, metadata)

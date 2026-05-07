@@ -29,10 +29,12 @@ async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context)
     await magento.updateCustomerSalesrep(magentoCustomerId, targetSalesrepId, existing);
   } catch (err) {
     if (err.response?.status === 400) {
-      logger.warn('Skipping customer with invalid Magento data (400)', {
-        magentoId: magentoCustomerId, error: err.response?.data?.message, ...context,
+      const errorMessage = err.response?.data?.message || 'Magento 400';
+      await db.quarantineOwnerReverse(context.hubspotId, magentoCustomerId, targetSalesrepId, errorMessage);
+      logger.warn('Quarantined customer with invalid Magento data (400)', {
+        magentoId: magentoCustomerId, error: errorMessage, ...context,
       });
-      return 'skipped';
+      return 'quarantined';
     }
     throw err;
   }
@@ -42,6 +44,7 @@ async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context)
     from: currentSalesrep,
     to: targetSalesrepId,
   });
+  await db.removeQuarantinedOwnerReverse(context.hubspotId, magentoCustomerId);
   return 'updated';
 }
 
@@ -56,7 +59,7 @@ async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context)
 export async function syncOwnersReverse(since, runId) {
   if (ownerReverseInProgress) {
     logger.warn('Owner reverse sync already in progress, skipping', { runId });
-    return { updated: 0, skipped: 0, failed: 0, lastModifiedAt: null };
+    return { updated: 0, skipped: 0, failed: 0, quarantined: 0, lastModifiedAt: null };
   }
   ownerReverseInProgress = true;
   try {
@@ -68,6 +71,7 @@ export async function syncOwnersReverse(since, runId) {
     let updated = 0;
     let skipped = 0;
     let failed = 0;
+    let quarantined = 0;
     let lastModifiedAt = null;
 
     for (const contact of contacts) {
@@ -124,6 +128,7 @@ export async function syncOwnersReverse(since, runId) {
             { hubspotId: contact.id, ownerId, runId },
           );
           if (outcome === 'updated') updated++;
+          else if (outcome === 'quarantined') quarantined++;
           else skipped++;
         }
       } catch (err) {
@@ -137,9 +142,9 @@ export async function syncOwnersReverse(since, runId) {
       }
     }
 
-    logger.info('Owner reverse sync complete', { updated, skipped, failed, total: contacts.length, runId });
+    logger.info('Owner reverse sync complete', { updated, skipped, failed, quarantined, total: contacts.length, runId });
     await db.logSync(runId, 'owner_reverse', 'info',
-      `Reverse-synced owners: ${updated} updated, ${skipped} skipped, ${failed} failed`);
+      `Reverse-synced owners: ${updated} updated, ${skipped} skipped, ${failed} failed, ${quarantined} quarantined`);
 
     if (lastModifiedAt) {
       if (failed > 0) {
@@ -148,7 +153,7 @@ export async function syncOwnersReverse(since, runId) {
       await db.updateLastSyncedAt('owner_reverse', lastModifiedAt);
     }
 
-    return { updated, skipped, failed, lastModifiedAt };
+    return { updated, skipped, failed, quarantined, lastModifiedAt };
   } finally {
     ownerReverseInProgress = false;
   }

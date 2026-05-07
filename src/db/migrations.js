@@ -47,6 +47,21 @@ export async function runMigrations() {
         ON sync_retry_queue(next_retry_at)
         WHERE attempts < max_attempts;
 
+      CREATE TABLE IF NOT EXISTS owner_reverse_quarantine (
+        hubspot_id VARCHAR(255) NOT NULL,
+        magento_id VARCHAR(255) NOT NULL,
+        target_salesrep_id VARCHAR(50) NOT NULL,
+        error_message TEXT NOT NULL,
+        attempts INT NOT NULL DEFAULT 1,
+        first_failed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        next_retry_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '1 hour'),
+        PRIMARY KEY (hubspot_id, magento_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_owner_reverse_quarantine_due
+        ON owner_reverse_quarantine(next_retry_at);
+
       CREATE TABLE IF NOT EXISTS sync_log (
         id SERIAL PRIMARY KEY,
         run_id UUID NOT NULL,

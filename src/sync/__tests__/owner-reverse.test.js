@@ -5,12 +5,16 @@ const mockGetMagentoIdsByHubspotId = vi.fn();
 const mockUpsertMapping = vi.fn();
 const mockLogSync = vi.fn();
 const mockUpdateLastSyncedAt = vi.fn();
+const mockQuarantineOwnerReverse = vi.fn();
+const mockRemoveQuarantinedOwnerReverse = vi.fn();
 
 vi.mock('../../db/sync-state.js', () => ({
   getMagentoIdsByHubspotId: mockGetMagentoIdsByHubspotId,
   upsertMapping: mockUpsertMapping,
   logSync: mockLogSync,
   updateLastSyncedAt: mockUpdateLastSyncedAt,
+  quarantineOwnerReverse: mockQuarantineOwnerReverse,
+  removeQuarantinedOwnerReverse: mockRemoveQuarantinedOwnerReverse,
 }));
 
 const mockSearchContactsModifiedSince = vi.fn();
@@ -52,6 +56,8 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     mockLogSync.mockResolvedValue();
     mockUpdateLastSyncedAt.mockResolvedValue();
     mockUpdateCustomerSalesrep.mockResolvedValue({});
+    mockQuarantineOwnerReverse.mockResolvedValue();
+    mockRemoveQuarantinedOwnerReverse.mockResolvedValue();
   });
 
   it('updates all Magento customer records when a contact maps to multiple scopes', async () => {
@@ -110,7 +116,7 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     expect(result.skipped).toBe(1);
   });
 
-  it('skips a customer with invalid Magento data (400) without counting it as a failure', async () => {
+  it('quarantines a customer with invalid Magento data (400) instead of silently dropping it', async () => {
     mockSearchContactsModifiedSince.mockResolvedValueOnce([
       makeContact('hs-4', 'owner-1', 'baddata@test.com'),
     ]);
@@ -125,7 +131,11 @@ describe('syncOwnersReverse – multi-scope customers', () => {
     const result = await syncOwnersReverse(since, 'run-4');
 
     expect(result.failed).toBe(0);
-    expect(result.skipped).toBe(1);
+    expect(result.quarantined).toBe(1);
+    expect(mockQuarantineOwnerReverse).toHaveBeenCalledWith(
+      'hs-4', '42469', '42',
+      'Invalid City. Please use A-Z, a-z, 0-9, -, \', spaces',
+    );
   });
 
   it('saves the owner_reverse timestamp to DB after a successful run', async () => {
@@ -184,6 +194,18 @@ describe('syncOwnersReverse – multi-scope customers', () => {
       'owner_reverse',
       new Date(Number(lastModifiedMs)),
     );
+  });
+
+  it('clears any prior quarantine row when an update succeeds', async () => {
+    mockSearchContactsModifiedSince.mockResolvedValueOnce([
+      makeContact('hs-7', 'owner-1', 'recovered@test.com'),
+    ]);
+    mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['700']);
+    mockGetCustomerById.mockResolvedValueOnce({ id: 700, website_id: 1, custom_attributes: [] });
+
+    await syncOwnersReverse(since, 'run-7');
+
+    expect(mockRemoveQuarantinedOwnerReverse).toHaveBeenCalledWith('hs-7', '700');
   });
 
   it('updates the single Magento record for a single-scope customer', async () => {

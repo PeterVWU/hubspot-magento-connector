@@ -5,6 +5,7 @@ import { syncProducts } from './products.js';
 import { syncCustomers } from './customers.js';
 import { syncOrders } from './orders.js';
 import { syncOwnersReverse } from './owner-reverse.js';
+import { processOwnerReverseQuarantine } from './owner-reverse-quarantine.js';
 import { processRetryQueue } from './retry-queue.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
@@ -27,6 +28,11 @@ async function runSyncBody(runId, syncStart) {
   // Magento salesrep back to HubSpot and clobber the user's change.
   const ownerReverseSince = await db.getLastSyncedAt('owner_reverse');
   const ownerReverseResult = await syncOwnersReverse(ownerReverseSince, runId);
+
+  // 2b. Retry quarantined owner-reverse rows that are due. Pre-existing
+  // Magento data issues block PUTs entirely; once an admin fixes the data,
+  // the next due retry recovers the salesrep update.
+  await processOwnerReverseQuarantine(runId);
 
   // 3. Sync customers (orders reference them)
   const customerSince = await db.getLastSyncedAt('customer');

@@ -21,7 +21,7 @@ axios.create.mockReturnValue({
   put: vi.fn(),
 });
 
-const { getOrdersUpdatedSince } = await import('../magento.js');
+const { getOrdersUpdatedSince, getQualifyingOrdersByCustomerId } = await import('../magento.js');
 
 describe('fetchAllPages – pagination loop guards', () => {
   beforeEach(() => mockGet.mockReset());
@@ -60,5 +60,22 @@ describe('fetchAllPages – pagination loop guards', () => {
 
     expect(orders).toHaveLength(150);
     expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('builds a customer qualifying-order lookup using grand_total gt min total', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { items: [{ entity_id: 1, customer_id: 200, grand_total: 501 }], total_count: 1 },
+    });
+
+    const orders = await getQualifyingOrdersByCustomerId(200, 500, 1);
+
+    expect(orders).toHaveLength(1);
+    const url = mockGet.mock.calls[0][0];
+    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][0][filters][0][field]=customer_id');
+    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][0][filters][0][conditionType]=eq');
+    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][1][filters][0][field]=grand_total');
+    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][1][filters][0][conditionType]=gt');
+    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][1][filters][0][value]=500');
+    expect(decodeURIComponent(url)).toContain('searchCriteria[pageSize]=1');
   });
 });

@@ -9,6 +9,9 @@ A Node.js background service that syncs data from a Magento 2 store to HubSpot C
 - **Orders** (Magento orders -> HubSpot deals with line items and contact associations)
 
 Sync runs in dependency order: products first, then customers, then orders.
+Customers and orders are only pushed to HubSpot when the customer has at least
+one Magento order with `grand_total` strictly greater than
+`CUSTOMER_MIN_ORDER_TOTAL`. Fraud customers remain excluded.
 
 ## Requirements
 
@@ -31,6 +34,7 @@ DATABASE_URL=postgresql://hubspot_sync:changeme@localhost:5433/hubspot_sync
 SYNC_INTERVAL_MINUTES=5       # How often to poll (default: 5)
 SYNC_START_DATE=2024-01-01    # Only sync records updated after this date
 EXCLUDED_SALESREP_IDS=1,2,3   # Comma-separated Magento sales rep IDs to exclude
+CUSTOMER_MIN_ORDER_TOTAL=500  # Strict grand_total threshold for customer/order sync
 MAGENTO_PAGE_SIZE=100         # Magento API page size (default: 100)
 HUBSPOT_BATCH_SIZE=100        # HubSpot batch upsert size (default: 100)
 MAX_RECORDS_PER_SYNC=0        # Max records per entity per cycle, 0=unlimited (default: 0)

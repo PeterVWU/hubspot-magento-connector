@@ -4,6 +4,8 @@ import * as hubspot from '../api/hubspot.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { mapProductToHubspot } from '../mappers/product.mapper.js';
 import { syncSingleOrder } from './orders.js';
+import { config } from '../config/index.js';
+import { isEligibleCustomer } from './eligibility.js';
 import logger from '../utils/logger.js';
 
 export async function processRetryQueue(runId) {
@@ -55,7 +57,18 @@ async function retryItem(item) {
   switch (item.entity_type) {
     case 'customer': {
       const customer = payload.customer;
+      if (!isEligibleCustomer(customer)) return;
+
+      const qualifyingOrders = await magento.getQualifyingOrdersByCustomerId(
+        item.magento_id,
+        config.sync.customerMinOrderTotal,
+        1,
+      );
+      if (!qualifyingOrders.length) return;
+
       const properties = mapCustomerToContact(customer);
+      if (!properties.email) return;
+
       const existing = await hubspot.searchContacts(properties.email);
       if (existing) {
         await hubspot.updateContact(existing.id, properties);

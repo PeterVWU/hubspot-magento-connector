@@ -14,6 +14,7 @@ import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
+import { isEligibleCustomer, isQualifyingOrder } from '../sync/eligibility.js';
 import logger from '../utils/logger.js';
 
 const CUSTOMERS_PREFIX = 'data/customers';
@@ -22,15 +23,47 @@ const ITEMS_PREFIX     = 'data/order_items';
 
 function progress(label, current, total, stats) {
   const pct = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
-  const bar = Math.floor((current / total) * 20);
+  const bar = total > 0 ? Math.floor((current / total) * 20) : 0;
   const filled = '█'.repeat(bar) + '░'.repeat(20 - bar);
-  const line = `${label}: [${filled}] ${current}/${total} (${pct}%) | created: ${stats.created} updated: ${stats.updated} failed: ${stats.failed}`;
+  const skipped = stats.skipped !== undefined ? ` skipped: ${stats.skipped}` : '';
+  const line = `${label}: [${filled}] ${current}/${total} (${pct}%) | created: ${stats.created} updated: ${stats.updated}${skipped} failed: ${stats.failed}`;
   process.stdout.write(`\r${line}  `);
 }
 
 // --- Customer sync ---
 
-async function importCustomers(rows) {
+function customerFromCsvRow(row) {
+  const customAttributes = [];
+  if (row.salesrep_rep_id) {
+    customAttributes.push({ attribute_code: 'salesrep_rep_id', value: row.salesrep_rep_id });
+  }
+  if (row.Fraud || row.fraud) {
+    customAttributes.push({ attribute_code: 'Fraud', value: row.Fraud || row.fraud });
+  }
+
+  return {
+    id: row.entity_id,
+    group_id: row.group_id,
+    email: row.email,
+    firstname: row.firstname,
+    lastname: row.lastname,
+    created_at: row.created_at || null,
+    salesrep_rep_id: row.salesrep_rep_id || null,
+    custom_attributes: customAttributes,
+    addresses: [{
+      default_billing: true,
+      company: row.company || '',
+      telephone: row.telephone || '',
+      street: row.street ? [row.street] : [],
+      city: row.city || '',
+      region: { region: row.region || '' },
+      postcode: row.postcode || '',
+      country_id: row.country_id || '',
+    }],
+  };
+}
+
+async function importCustomers(rows, qualifyingCustomerIds) {
   let created = 0, updated = 0, skipped = 0, failed = 0;
   const total = rows.length;
   let i = 0;
@@ -39,30 +72,18 @@ async function importCustomers(rows) {
     i++;
     if (!row.email) {
       skipped++;
-      progress('Customers', i, total, { created, updated, failed });
+      progress('Customers', i, total, { created, updated, skipped, failed });
       continue;
     }
 
     try {
-      // Reshape CSV row into the object shape mapCustomerToContact expects
-      const customer = {
-        id: row.entity_id,
-        email: row.email,
-        firstname: row.firstname,
-        lastname: row.lastname,
-        created_at: row.created_at || null,
-        salesrep_rep_id: row.salesrep_rep_id || null,
-        addresses: [{
-          default_billing: true,
-          company: row.company || '',
-          telephone: row.telephone || '',
-          street: row.street ? [row.street] : [],
-          city: row.city || '',
-          region: { region: row.region || '' },
-          postcode: row.postcode || '',
-          country_id: row.country_id || '',
-        }],
-      };
+      const customer = customerFromCsvRow(row);
+
+      if (!isEligibleCustomer(customer) || !qualifyingCustomerIds.has(String(row.entity_id))) {
+        skipped++;
+        progress('Customers', i, total, { created, updated, skipped, failed });
+        continue;
+      }
 
       const properties = mapCustomerToContact(customer);
       let contactHubspotId = await db.getHubspotId('customer', row.entity_id);
@@ -85,11 +106,11 @@ async function importCustomers(rows) {
         }
       }
 
-      progress('Customers', i, total, { created, updated, failed });
+      progress('Customers', i, total, { created, updated, skipped, failed });
     } catch (err) {
       failed++;
       logger.error('\nFailed to import customer', { entity_id: row.entity_id, email: row.email, error: err.message });
-      progress('Customers', i, total, { created, updated, failed });
+      progress('Customers', i, total, { created, updated, skipped, failed });
     }
   }
 
@@ -99,7 +120,7 @@ async function importCustomers(rows) {
 
 // --- Order sync ---
 
-async function importOrders(orderRows, itemRows, customerOwnerMap) {
+async function importOrders(orderRows, itemRows, customerOwnerMap, customersById) {
   // Group items by order_id for fast lookup
   const itemsByOrderId = new Map();
   for (const item of itemRows) {
@@ -108,7 +129,7 @@ async function importOrders(orderRows, itemRows, customerOwnerMap) {
     itemsByOrderId.get(key).push(item);
   }
 
-  let created = 0, updated = 0, failed = 0;
+  let created = 0, updated = 0, skipped = 0, failed = 0;
   const total = orderRows.length;
   let i = 0;
 
@@ -138,18 +159,25 @@ async function importOrders(orderRows, itemRows, customerOwnerMap) {
 
       const existed = !!(await db.getHubspotId('order', row.entity_id));
       const ownerId = row.customer_id ? (customerOwnerMap.get(String(row.customer_id)) || null) : null;
-      await syncSingleOrder(order, 'csv-import', ownerId);
-      existed ? updated++ : created++;
-      progress('Orders', i, total, { created, updated, failed });
+      const customer = row.customer_id ? customersById.get(String(row.customer_id)) : null;
+      const result = await syncSingleOrder(order, 'csv-import', ownerId, customer);
+      if (result.skipped) {
+        skipped++;
+      } else if (existed || result.action === 'updated') {
+        updated++;
+      } else {
+        created++;
+      }
+      progress('Orders', i, total, { created, updated, skipped, failed });
     } catch (err) {
       failed++;
       logger.error('\nFailed to import order', { entity_id: row.entity_id, increment_id: row.increment_id, error: err.message });
-      progress('Orders', i, total, { created, updated, failed });
+      progress('Orders', i, total, { created, updated, skipped, failed });
     }
   }
 
   process.stdout.write('\n');
-  return { created, updated, failed };
+  return { created, updated, skipped, failed };
 }
 
 // --- Main ---
@@ -173,8 +201,16 @@ async function run() {
   logger.info('Item files:    ', itemFiles);
   logger.info(`Loaded: ${customerRows.length} customers, ${orderRows.length} orders, ${itemRows.length} order items`);
 
+  const customersById = new Map(customerRows.map(row => [String(row.entity_id), customerFromCsvRow(row)]));
+  const qualifyingCustomerIds = new Set();
+  for (const row of orderRows) {
+    if (row.customer_id && isQualifyingOrder(row)) {
+      qualifyingCustomerIds.add(String(row.customer_id));
+    }
+  }
+
   logger.info('--- Importing customers ---');
-  const custStats = await importCustomers(customerRows);
+  const custStats = await importCustomers(customerRows, qualifyingCustomerIds);
   logger.info('Customer import complete', custStats);
 
   // Build customer_id → hubspot_owner_id map for order assignment
@@ -188,12 +224,12 @@ async function run() {
   logger.info(`Built owner map: ${customerOwnerMap.size} customers have an assigned owner`);
 
   logger.info('--- Importing orders ---');
-  const orderStats = await importOrders(orderRows, itemRows, customerOwnerMap);
+  const orderStats = await importOrders(orderRows, itemRows, customerOwnerMap, customersById);
   logger.info('Order import complete', orderStats);
 
   logger.info('=== IMPORT SUMMARY ===');
   logger.info(`Customers: ${custStats.created} created, ${custStats.updated} updated, ${custStats.skipped} skipped, ${custStats.failed} failed`);
-  logger.info(`Orders:    ${orderStats.created} created, ${orderStats.updated} updated, ${orderStats.failed} failed`);
+  logger.info(`Orders:    ${orderStats.created} created, ${orderStats.updated} updated, ${orderStats.skipped} skipped, ${orderStats.failed} failed`);
 
   await pool.end();
 }

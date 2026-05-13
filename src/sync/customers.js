@@ -1,8 +1,18 @@
 import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
+import { config } from '../config/index.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
+
+async function customerHasQualifyingOrder(customerId) {
+  const orders = await magento.getQualifyingOrdersByCustomerId(
+    customerId,
+    config.sync.customerMinOrderTotal,
+    1,
+  );
+  return orders.length > 0;
+}
 
 export async function syncCustomers(since, runId) {
   logger.info('Starting customer sync', { since: since.toISOString(), runId });
@@ -12,13 +22,25 @@ export async function syncCustomers(since, runId) {
 
   let created = 0;
   let updated = 0;
+  let skipped = 0;
   let failed = 0;
 
   for (const customer of customers) {
     try {
       const properties = mapCustomerToContact(customer);
       if (!properties.email) {
+        skipped++;
         logger.warn('Skipping customer without email', { magentoId: customer.id, runId });
+        continue;
+      }
+
+      if (!(await customerHasQualifyingOrder(customer.id))) {
+        skipped++;
+        logger.debug('Skipping customer without qualifying order', {
+          magentoId: customer.id,
+          minOrderTotal: config.sync.customerMinOrderTotal,
+          runId,
+        });
         continue;
       }
 
@@ -47,6 +69,7 @@ export async function syncCustomers(since, runId) {
     } catch (err) {
       const isInvalidEmail = err.response?.data?.errors?.some(e => e.code === 'INVALID_EMAIL');
       if (isInvalidEmail) {
+        skipped++;
         logger.warn('Skipping customer with invalid email (will not retry)', {
           magentoId: customer.id,
           email: customer.email,
@@ -69,8 +92,8 @@ export async function syncCustomers(since, runId) {
     ? new Date(customers[customers.length - 1].updated_at)
     : null;
 
-  logger.info('Customer sync complete', { created, updated, failed, total: customers.length, runId });
-  await db.logSync(runId, 'customer', 'info', `Synced ${customers.length} customers: ${created} created, ${updated} updated, ${failed} failed`);
+  logger.info('Customer sync complete', { created, updated, skipped, failed, total: customers.length, runId });
+  await db.logSync(runId, 'customer', 'info', `Synced ${customers.length} customers: ${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed`);
 
-  return { created, updated, failed, lastUpdatedAt };
+  return { created, updated, skipped, failed, lastUpdatedAt };
 }

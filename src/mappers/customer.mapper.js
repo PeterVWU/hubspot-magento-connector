@@ -24,11 +24,18 @@ export function mapCustomerToContact(customer) {
     properties.account_created_date = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   }
 
-  // Resolve salesrep → HubSpot owner (works for both Magento API and CSV import shapes)
+  // Resolve salesrep → HubSpot owner (works for both Magento API and CSV import shapes).
+  // - Mapped salesrep → set owner.
+  // - Missing/empty/"0" salesrep → clear owner ("" tells HubSpot to unassign).
+  // - Unmapped non-empty salesrep → leave owner untouched (preserves any manual
+  //   HubSpot assignment for reps we haven't added to SALESREP_OWNER_MAP yet).
   const salesrepId = (customer.custom_attributes || []).find(a => a.attribute_code === 'salesrep_rep_id')?.value
     ?? customer.salesrep_rep_id;
-  if (salesrepId) {
-    const ownerId = SALESREP_OWNER_MAP[String(salesrepId)];
+  const salesrepStr = salesrepId == null ? '' : String(salesrepId);
+  if (salesrepStr === '' || salesrepStr === '0') {
+    properties.hubspot_owner_id = '';
+  } else {
+    const ownerId = SALESREP_OWNER_MAP[salesrepStr];
     if (ownerId) properties.hubspot_owner_id = ownerId;
   }
 

@@ -5,6 +5,7 @@ vi.mock('axios');
 vi.mock('../../config/index.js', () => ({
   config: {
     magento: { baseUrl: 'http://magento.test', token: 't', pageSize: 100, maxRecordsPerSync: 0, timeout: 5000 },
+    sync: { excludedSalesrepIds: ['5', '6', '7'] },
   },
 }));
 vi.mock('../../utils/logger.js', () => ({
@@ -21,7 +22,7 @@ axios.create.mockReturnValue({
   put: vi.fn(),
 });
 
-const { getOrdersUpdatedSince, getQualifyingOrdersByCustomerId } = await import('../magento.js');
+const { getOrdersUpdatedSince, getQualifyingOrdersByCustomerId, getCustomersUpdatedSince } = await import('../magento.js');
 
 describe('fetchAllPages – pagination loop guards', () => {
   beforeEach(() => mockGet.mockReset());
@@ -60,6 +61,28 @@ describe('fetchAllPages – pagination loop guards', () => {
 
     expect(orders).toHaveLength(150);
     expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('pushes salesrep exclusion server-side (nin OR null) and returns last raw updated_at', async () => {
+    const items = [
+      { entity_id: 1, updated_at: '2024-01-01T01:00:00Z', custom_attributes: [{ attribute_code: 'salesrep_rep_id', value: '24' }] },
+      { entity_id: 2, updated_at: '2024-01-01T02:00:00Z', custom_attributes: [] },
+    ];
+    mockGet.mockResolvedValueOnce({ data: { items, total_count: 2 } });
+
+    const result = await getCustomersUpdatedSince(new Date('2024-01-01T00:00:00Z'));
+
+    const url = decodeURIComponent(mockGet.mock.calls[0][0]);
+    // Server-side filter: salesrep_rep_id NIN excluded list, OR is null
+    expect(url).toContain('searchCriteria[filterGroups][2][filters][0][field]=salesrep_rep_id');
+    expect(url).toContain('searchCriteria[filterGroups][2][filters][0][conditionType]=nin');
+    expect(url).toContain('searchCriteria[filterGroups][2][filters][0][value]=5,6,7');
+    expect(url).toContain('searchCriteria[filterGroups][2][filters][1][field]=salesrep_rep_id');
+    expect(url).toContain('searchCriteria[filterGroups][2][filters][1][conditionType]=null');
+
+    // High-water mark for cursor is the LAST raw record's updated_at
+    expect(result.lastRawUpdatedAt).toEqual(new Date('2024-01-01T02:00:00Z'));
+    expect(result.customers).toHaveLength(2);
   });
 
   it('builds a customer qualifying-order lookup using grand_total gt min total', async () => {

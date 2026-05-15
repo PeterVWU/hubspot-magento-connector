@@ -66,7 +66,10 @@ describe('syncCustomers qualification gate', () => {
   });
 
   it('skips customers that do not have a qualifying historical order', async () => {
-    mockGetCustomersUpdatedSince.mockResolvedValueOnce([customer(1)]);
+    mockGetCustomersUpdatedSince.mockResolvedValueOnce({
+      customers: [customer(1)],
+      lastRawUpdatedAt: new Date('2024-01-01T00:01:00Z'),
+    });
     mockGetQualifyingOrdersByCustomerId.mockResolvedValueOnce([]);
 
     const result = await syncCustomers(since, 'run-1');
@@ -79,7 +82,10 @@ describe('syncCustomers qualification gate', () => {
   });
 
   it('creates a contact only when the customer has a qualifying order', async () => {
-    mockGetCustomersUpdatedSince.mockResolvedValueOnce([customer(2)]);
+    mockGetCustomersUpdatedSince.mockResolvedValueOnce({
+      customers: [customer(2)],
+      lastRawUpdatedAt: new Date('2024-01-01T00:02:00Z'),
+    });
     mockGetQualifyingOrdersByCustomerId.mockResolvedValueOnce([{ entity_id: 10, grand_total: '501.00' }]);
     mockGetHubspotId.mockResolvedValueOnce(null);
     mockSearchContacts.mockResolvedValueOnce(null);
@@ -90,5 +96,19 @@ describe('syncCustomers qualification gate', () => {
     expect(result.created).toBe(1);
     expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ email: '2@test.com' }));
     expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 2, 'hs-contact-2');
+  });
+
+  it('advances the cursor by the last raw record, not the last filtered one', async () => {
+    // 1 included customer, but the raw batch reached further into the timeline.
+    const rawHighWater = new Date('2024-01-02T05:00:00Z');
+    mockGetCustomersUpdatedSince.mockResolvedValueOnce({
+      customers: [customer(3)],
+      lastRawUpdatedAt: rawHighWater,
+    });
+    mockGetQualifyingOrdersByCustomerId.mockResolvedValueOnce([]);
+
+    const result = await syncCustomers(since, 'run-3');
+
+    expect(result.lastUpdatedAt).toEqual(rawHighWater);
   });
 });

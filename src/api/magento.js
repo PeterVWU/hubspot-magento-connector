@@ -102,19 +102,39 @@ export async function getCustomersUpdatedSince(since) {
     { field: 'group_id', value: '5', condition: 'neq', group: 1, filterIdx: 0 },
   ];
 
+  // Exclude assigned-to-excluded-salesrep customers server-side so the
+  // pagination budget isn't burned on records we'd drop anyway. Within a
+  // filter group, multiple filters are OR'd, so `nin` OR `null` keeps
+  // customers with no salesrep_rep_id at all (matching the prior client
+  // behavior that only excluded *assigned* excluded reps).
+  if (excludedIds.length > 0) {
+    filters.push(
+      { field: 'salesrep_rep_id', value: excludedIds.join(','), condition: 'nin', group: 2, filterIdx: 0 },
+      { field: 'salesrep_rep_id', value: '1', condition: 'null', group: 2, filterIdx: 1 },
+    );
+  }
+
   // Fetch customers updated since the given time
   const customers = await fetchAllPages('/customers/search', filters, 'customers', config.magento.maxRecordsPerSync);
 
-  // Client-side filters for custom EAV attributes
+  // High-water mark for cursor advancement: latest updated_at in the raw
+  // batch (pre-filter). Excluded customers are deterministically excluded,
+  // so we don't need the cursor to revisit them.
+  const lastRawUpdatedAt = customers.length > 0
+    ? new Date(customers[customers.length - 1].updated_at)
+    : null;
+
+  // Client-side filters: defense-in-depth against EAV/Magento edge cases
+  // (e.g. a salesrep we forgot to add to EXCLUDED_SALESREP_IDS slipping
+  // through the server filter, or the Fraud flag which we don't push to
+  // the server filter today).
   const before = customers.length;
   const filtered = customers.filter((customer) => {
     const attrs = customer.custom_attributes || [];
 
-    // Exclude customers with Fraud flag set to 1
     const fraudAttr = attrs.find(a => a.attribute_code === 'Fraud');
     if (fraudAttr?.value === '1' || fraudAttr?.value === 1) return false;
 
-    // Exclude customers assigned to specific sales reps
     if (excludedIds.length > 0) {
       const salesrepAttr = attrs.find(a => a.attribute_code === 'salesrep_rep_id');
       const salesrepId = salesrepAttr?.value;
@@ -128,7 +148,7 @@ export async function getCustomersUpdatedSince(since) {
     logger.info(`Customer filters applied: ${before} -> ${filtered.length} (excluded ${before - filtered.length})`);
   }
 
-  return filtered;
+  return { customers: filtered, lastRawUpdatedAt };
 }
 
 export async function getProductsUpdatedSince(since) {

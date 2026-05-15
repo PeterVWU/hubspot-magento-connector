@@ -17,7 +17,7 @@ async function customerHasQualifyingOrder(customerId) {
 export async function syncCustomers(since, runId) {
   logger.info('Starting customer sync', { since: since.toISOString(), runId });
 
-  const customers = await magento.getCustomersUpdatedSince(since);
+  const { customers, lastRawUpdatedAt } = await magento.getCustomersUpdatedSince(since);
   logger.info(`Found ${customers.length} customers to sync`, { runId });
 
   let created = 0;
@@ -87,10 +87,11 @@ export async function syncCustomers(since, runId) {
     }
   }
 
-  // Use the last record's updated_at as the high-water mark (records are sorted ASC)
-  const lastUpdatedAt = customers.length > 0
-    ? new Date(customers[customers.length - 1].updated_at)
-    : null;
+  // Advance the cursor by the last *raw* batch record's updated_at, not the
+  // last filtered one. Server- and client-side filters are deterministic, so
+  // re-fetching excluded customers wastes the pagination budget and stalls
+  // the cursor when the exclusion rate is high.
+  const lastUpdatedAt = lastRawUpdatedAt;
 
   logger.info('Customer sync complete', { created, updated, skipped, failed, total: customers.length, runId });
   await db.logSync(runId, 'customer', 'info', `Synced ${customers.length} customers: ${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed`);

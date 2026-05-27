@@ -11,7 +11,9 @@ A Node.js background service that syncs data from a Magento 2 store to HubSpot C
 Sync runs in dependency order: products first, then customers, then orders.
 Customers and orders are only pushed to HubSpot when the customer has at least
 one Magento order with `grand_total` strictly greater than
-`CUSTOMER_MIN_ORDER_TOTAL`. Fraud customers remain excluded.
+`CUSTOMER_MIN_ORDER_TOTAL`. Customer groups `0`, `5`, `61`, `62`, and `64`
+are excluded; group `1` is allowed through the same order-total rule. Fraud
+customers remain excluded.
 
 ## Requirements
 
@@ -73,6 +75,26 @@ npm run dev        # Run with --watch for auto-restart on file changes
 # Import customers from CSV file
 npm run import-csv -- path/to/customers.csv
 ```
+
+## Backfilling customers
+
+To re-scan all Magento customers with the current eligibility rules, reset the
+customer sync cursor and let the service run normally:
+
+```sql
+UPDATE sync_state
+SET last_synced_at = '1970-01-01T00:00:00Z', updated_at = NOW()
+WHERE entity_type = 'customer';
+```
+
+The next sync will page through Magento customers, exclude blocked groups
+`0`, `5`, `61`, `62`, and `64`, keep group `1` subject to the
+`CUSTOMER_MIN_ORDER_TOTAL` rule, and create or update matching HubSpot
+contacts. If `MAX_RECORDS_PER_SYNC` is set, the backfill continues across
+multiple sync cycles.
+
+Reset the `order` cursor as well only when historical qualifying orders/deals
+also need to be imported.
 
 ## Project structure
 

@@ -20,8 +20,10 @@ describe('sync eligibility', () => {
     expect(isQualifyingOrder({ grand_total: 'not-a-number' })).toBe(false);
   });
 
-  it('excludes fraud groups, fraud flags, and excluded sales reps', () => {
-    expect(isEligibleCustomer({ group_id: 5, custom_attributes: [] })).toBe(false);
+  it('excludes blocked groups, fraud flags, and excluded sales reps', () => {
+    for (const groupId of [0, 5, 61, 62, 64]) {
+      expect(isEligibleCustomer({ group_id: groupId, custom_attributes: [] })).toBe(false);
+    }
     expect(isEligibleCustomer({
       group_id: 1,
       custom_attributes: [{ attribute_code: 'Fraud', value: '1' }],
@@ -31,5 +33,6 @@ describe('sync eligibility', () => {
       custom_attributes: [{ attribute_code: 'salesrep_rep_id', value: '99' }],
     })).toBe(false);
     expect(isEligibleCustomer({ group_id: 1, custom_attributes: [] })).toBe(true);
+    expect(isEligibleCustomer({ group_id: 2, custom_attributes: [] })).toBe(true);
   });
 });

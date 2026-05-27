@@ -73,6 +73,11 @@ describe('fetchAllPages – pagination loop guards', () => {
     const result = await getCustomersUpdatedSince(new Date('2024-01-01T00:00:00Z'));
 
     const url = decodeURIComponent(mockGet.mock.calls[0][0]);
+    expect(url).toContain('searchCriteria[filterGroups][1][filters][0][field]=group_id');
+    expect(url).toContain('searchCriteria[filterGroups][1][filters][0][conditionType]=nin');
+    expect(url).toContain('searchCriteria[filterGroups][1][filters][0][value]=0,5,61,62,64');
+    expect(url).not.toContain('searchCriteria[filterGroups][1][filters][0][value]=0,1,5,61,62,64');
+
     // Server-side filter: salesrep_rep_id NIN excluded list, OR is null
     expect(url).toContain('searchCriteria[filterGroups][2][filters][0][field]=salesrep_rep_id');
     expect(url).toContain('searchCriteria[filterGroups][2][filters][0][conditionType]=nin');
@@ -83,6 +88,19 @@ describe('fetchAllPages – pagination loop guards', () => {
     // High-water mark for cursor is the LAST raw record's updated_at
     expect(result.lastRawUpdatedAt).toEqual(new Date('2024-01-01T02:00:00Z'));
     expect(result.customers).toHaveLength(2);
+  });
+
+  it('filters blocked customer groups client-side while allowing group 1 through', async () => {
+    const items = [
+      { entity_id: 1, group_id: 1, updated_at: '2024-01-01T01:00:00Z', custom_attributes: [] },
+      { entity_id: 2, group_id: 61, updated_at: '2024-01-01T02:00:00Z', custom_attributes: [] },
+    ];
+    mockGet.mockResolvedValueOnce({ data: { items, total_count: 2 } });
+
+    const result = await getCustomersUpdatedSince(new Date('2024-01-01T00:00:00Z'));
+
+    expect(result.customers).toEqual([items[0]]);
+    expect(result.lastRawUpdatedAt).toEqual(new Date('2024-01-01T02:00:00Z'));
   });
 
   it('builds a customer qualifying-order lookup using grand_total gt min total', async () => {

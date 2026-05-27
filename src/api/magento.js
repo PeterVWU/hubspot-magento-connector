@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../config/index.js';
+import { BLOCKED_CUSTOMER_GROUP_IDS } from '../sync/eligibility.js';
 import logger from '../utils/logger.js';
 import { withTimeout } from '../utils/timeout.js';
 
@@ -98,8 +99,7 @@ export async function getCustomersUpdatedSince(since) {
   const excludedIds = config.sync.excludedSalesrepIds;
   const filters = [
     { field: 'updated_at', value: sinceStr, condition: 'gteq', group: 0, filterIdx: 0 },
-    // Exclude fraud customer group (group_id = 5) server-side
-    { field: 'group_id', value: '5', condition: 'neq', group: 1, filterIdx: 0 },
+    { field: 'group_id', value: BLOCKED_CUSTOMER_GROUP_IDS.join(','), condition: 'nin', group: 1, filterIdx: 0 },
   ];
 
   // Exclude assigned-to-excluded-salesrep customers server-side so the
@@ -131,6 +131,8 @@ export async function getCustomersUpdatedSince(since) {
   const before = customers.length;
   const filtered = customers.filter((customer) => {
     const attrs = customer.custom_attributes || [];
+
+    if (BLOCKED_CUSTOMER_GROUP_IDS.includes(String(customer.group_id))) return false;
 
     const fraudAttr = attrs.find(a => a.attribute_code === 'Fraud');
     if (fraudAttr?.value === '1' || fraudAttr?.value === 1) return false;

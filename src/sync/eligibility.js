@@ -1,5 +1,7 @@
 import { config } from '../config/index.js';
 
+export const BLOCKED_CUSTOMER_GROUP_IDS = ['0', '5', '61', '62', '64'];
+
 export function getCustomerSalesrepId(customer) {
   return (customer.custom_attributes || [])
     .find(a => a.attribute_code === 'salesrep_rep_id')?.value
@@ -9,7 +11,7 @@ export function getCustomerSalesrepId(customer) {
 
 export function isEligibleCustomer(customer) {
   if (!customer) return false;
-  if (String(customer.group_id) === '5') return false;
+  if (BLOCKED_CUSTOMER_GROUP_IDS.includes(String(customer.group_id))) return false;
 
   const fraudAttr = (customer.custom_attributes || [])
     .find(a => a.attribute_code === 'Fraud');

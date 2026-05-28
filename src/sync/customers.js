@@ -1,6 +1,7 @@
 import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
+import { requiresQualifyingOrderForCustomer } from './eligibility.js';
 import { config } from '../config/index.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
@@ -34,10 +35,11 @@ export async function syncCustomers(since, runId) {
         continue;
       }
 
-      if (!(await customerHasQualifyingOrder(customer.id))) {
+      if (requiresQualifyingOrderForCustomer(customer) && !(await customerHasQualifyingOrder(customer.id))) {
         skipped++;
         logger.debug('Skipping customer without qualifying order', {
           magentoId: customer.id,
+          groupId: customer.group_id,
           minOrderTotal: config.sync.customerMinOrderTotal,
           runId,
         });

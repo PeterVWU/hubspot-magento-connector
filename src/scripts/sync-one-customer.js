@@ -9,7 +9,7 @@ import pool from '../db/index.js';
 import * as magento from '../api/magento.js';
 import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
-import { isEligibleCustomer, isQualifyingOrder } from '../sync/eligibility.js';
+import { isEligibleCustomer, isQualifyingOrder, requiresQualifyingOrderForCustomer } from '../sync/eligibility.js';
 import logger from '../utils/logger.js';
 
 const customerId = process.argv[2];
@@ -38,7 +38,7 @@ async function run() {
   const qualifyingOrders = orders.filter(isQualifyingOrder);
   logger.info(`Found ${orders.length} orders, ${qualifyingOrders.length} qualifying`);
 
-  if (!qualifyingOrders.length) {
+  if (requiresQualifyingOrderForCustomer(customer) && !qualifyingOrders.length) {
     logger.info(`Customer ${customerId} has no qualifying orders; nothing to sync`);
     await pool.end();
     return;

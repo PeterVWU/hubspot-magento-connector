@@ -25,6 +25,10 @@ export function isEligibleCustomer(customer) {
   return true;
 }
 
+export function requiresQualifyingOrderForCustomer(customer) {
+  return String(customer?.group_id) === '1';
+}
+
 export function isQualifyingOrder(order) {
   return Number(order?.grand_total) > config.sync.customerMinOrderTotal;
 }

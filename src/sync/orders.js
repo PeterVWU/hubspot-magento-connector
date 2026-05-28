@@ -5,7 +5,7 @@ import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import { config } from '../config/index.js';
 import * as db from '../db/sync-state.js';
-import { getCustomerSalesrepId, isEligibleCustomer, isQualifyingOrder } from './eligibility.js';
+import { getCustomerSalesrepId, isEligibleCustomer, isQualifyingOrder, requiresQualifyingOrderForCustomer } from './eligibility.js';
 import logger from '../utils/logger.js';
 
 let pipelineId = null;
@@ -135,29 +135,30 @@ async function resolveOrCreateContact(order, customer, runId) {
 }
 
 export async function syncSingleOrder(order, runId, ownerId = null, customerOverride = null) {
-  if (!isQualifyingOrder(order)) {
-    logger.debug('Skipping order below customer sync threshold', {
-      orderId: order.increment_id,
-      grandTotal: order.grand_total,
-      minOrderTotal: config.sync.customerMinOrderTotal,
-      runId,
-    });
-    return { skipped: true, reason: 'order_total_below_threshold' };
-  }
-
   if (!order.customer_id) {
-    logger.debug('Skipping qualifying order without customer ID', { orderId: order.increment_id, runId });
+    logger.debug('Skipping order without customer ID', { orderId: order.increment_id, runId });
     return { skipped: true, reason: 'missing_customer_id' };
   }
 
   const customer = customerOverride || await magento.getCustomerById(order.customer_id);
   if (!isEligibleCustomer(customer)) {
-    logger.debug('Skipping qualifying order for ineligible customer', {
+    logger.debug('Skipping order for ineligible customer', {
       orderId: order.increment_id,
       customerId: order.customer_id,
       runId,
     });
     return { skipped: true, reason: 'ineligible_customer' };
+  }
+
+  if (requiresQualifyingOrderForCustomer(customer) && !isQualifyingOrder(order)) {
+    logger.debug('Skipping group 1 order below customer sync threshold', {
+      orderId: order.increment_id,
+      customerId: order.customer_id,
+      grandTotal: order.grand_total,
+      minOrderTotal: config.sync.customerMinOrderTotal,
+      runId,
+    });
+    return { skipped: true, reason: 'order_total_below_threshold' };
   }
 
   await ensurePipeline();

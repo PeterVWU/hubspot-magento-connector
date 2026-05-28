@@ -9,11 +9,11 @@ A Node.js background service that syncs data from a Magento 2 store to HubSpot C
 - **Orders** (Magento orders -> HubSpot deals with line items and contact associations)
 
 Sync runs in dependency order: products first, then customers, then orders.
-Customers and orders are only pushed to HubSpot when the customer has at least
-one Magento order with `grand_total` strictly greater than
-`CUSTOMER_MIN_ORDER_TOTAL`. Customer groups `0`, `5`, `61`, `62`, and `64`
-are excluded; group `1` is allowed through the same order-total rule. Fraud
-customers remain excluded.
+Customer groups `0`, `5`, `61`, `62`, and `64` are excluded. Customer group
+`1` is only pushed to HubSpot when the customer has at least one Magento order
+with `grand_total` strictly greater than `CUSTOMER_MIN_ORDER_TOTAL`. Other
+eligible customer groups can sync without the order-total gate. Fraud customers
+remain excluded.
 
 ## Requirements
 
@@ -89,9 +89,9 @@ WHERE entity_type = 'customer';
 
 The next sync will page through Magento customers, exclude blocked groups
 `0`, `5`, `61`, `62`, and `64`, keep group `1` subject to the
-`CUSTOMER_MIN_ORDER_TOTAL` rule, and create or update matching HubSpot
-contacts. If `MAX_RECORDS_PER_SYNC` is set, the backfill continues across
-multiple sync cycles.
+`CUSTOMER_MIN_ORDER_TOTAL` rule, and create or update matching HubSpot contacts
+for all other eligible groups. If `MAX_RECORDS_PER_SYNC` is set, the backfill
+continues across multiple sync cycles.
 
 Reset the `order` cursor as well only when historical qualifying orders/deals
 also need to be imported.

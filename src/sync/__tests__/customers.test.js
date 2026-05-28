@@ -54,6 +54,7 @@ function customer(id) {
     email: `${id}@test.com`,
     firstname: 'Test',
     lastname: 'Customer',
+    group_id: 1,
     updated_at: `2024-01-01T00:0${id}:00Z`,
     custom_attributes: [],
   };
@@ -96,6 +97,23 @@ describe('syncCustomers qualification gate', () => {
     expect(result.created).toBe(1);
     expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ email: '2@test.com' }));
     expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 2, 'hs-contact-2');
+  });
+
+  it('creates a non-group-1 contact without checking for a qualifying order', async () => {
+    mockGetCustomersUpdatedSince.mockResolvedValueOnce({
+      customers: [{ ...customer(4), group_id: 65 }],
+      lastRawUpdatedAt: new Date('2024-01-01T00:04:00Z'),
+    });
+    mockGetHubspotId.mockResolvedValueOnce(null);
+    mockSearchContacts.mockResolvedValueOnce(null);
+    mockCreateContact.mockResolvedValueOnce({ id: 'hs-contact-4' });
+
+    const result = await syncCustomers(since, 'run-4');
+
+    expect(result.created).toBe(1);
+    expect(mockGetQualifyingOrdersByCustomerId).not.toHaveBeenCalled();
+    expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ email: '4@test.com' }));
+    expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 4, 'hs-contact-4');
   });
 
   it('advances the cursor by the last raw record, not the last filtered one', async () => {

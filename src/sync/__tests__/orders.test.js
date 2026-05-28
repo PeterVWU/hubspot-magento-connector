@@ -99,11 +99,13 @@ describe('syncSingleOrder qualification gate', () => {
     mockBatchCreateAssociations.mockResolvedValue([]);
   });
 
-  it('skips orders at or below the threshold before any HubSpot or DB writes', async () => {
+  it('skips group 1 orders at or below the threshold before any HubSpot or DB writes', async () => {
+    mockGetCustomerById.mockResolvedValueOnce(customer({ group_id: 1 }));
+
     const result = await syncSingleOrder(order({ grand_total: '500.00' }), 'run-1');
 
     expect(result).toEqual({ skipped: true, reason: 'order_total_below_threshold' });
-    expect(mockGetCustomerById).not.toHaveBeenCalled();
+    expect(mockGetCustomerById).toHaveBeenCalledWith(200);
     expect(mockGetDealPipelines).not.toHaveBeenCalled();
     expect(mockGetHubspotId).not.toHaveBeenCalled();
     expect(mockCreateDeal).not.toHaveBeenCalled();
@@ -138,5 +140,25 @@ describe('syncSingleOrder qualification gate', () => {
     expect(mockBatchCreateAssociations).toHaveBeenCalledOnce();
     expect(mockUpsertMapping).toHaveBeenCalledWith('order', 100, 'hs-deal-1');
     expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 200, 'hs-contact-1');
+  });
+
+  it('creates deal and contact for a below-threshold order from an eligible non-group-1 customer', async () => {
+    mockGetCustomerById.mockResolvedValueOnce(customer({ group_id: 65 }));
+    mockGetHubspotId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    mockSearchDealByOrderNumber.mockResolvedValueOnce(null);
+    mockCreateDeal.mockResolvedValueOnce({ id: 'hs-deal-2' });
+    mockSearchContacts.mockResolvedValueOnce(null);
+    mockCreateContact.mockResolvedValueOnce({ id: 'hs-contact-2' });
+
+    const result = await syncSingleOrder(order({ grand_total: '99.00' }), 'run-4');
+
+    expect(result.skipped).toBe(false);
+    expect(result.action).toBe('created');
+    expect(mockCreateDeal).toHaveBeenCalledWith(expect.objectContaining({ amount: '99.00' }));
+    expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ email: 'customer@test.com' }));
+    expect(mockUpsertMapping).toHaveBeenCalledWith('order', 100, 'hs-deal-2');
+    expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 200, 'hs-contact-2');
   });
 });

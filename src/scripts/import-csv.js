@@ -14,7 +14,7 @@ import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
-import { isEligibleCustomer, isQualifyingOrder } from '../sync/eligibility.js';
+import { isEligibleCustomer, isQualifyingOrder, requiresQualifyingOrderForCustomer } from '../sync/eligibility.js';
 import logger from '../utils/logger.js';
 
 const CUSTOMERS_PREFIX = 'data/customers';
@@ -79,7 +79,10 @@ async function importCustomers(rows, qualifyingCustomerIds) {
     try {
       const customer = customerFromCsvRow(row);
 
-      if (!isEligibleCustomer(customer) || !qualifyingCustomerIds.has(String(row.entity_id))) {
+      if (
+        !isEligibleCustomer(customer)
+        || (requiresQualifyingOrderForCustomer(customer) && !qualifyingCustomerIds.has(String(row.entity_id)))
+      ) {
         skipped++;
         progress('Customers', i, total, { created, updated, skipped, failed });
         continue;

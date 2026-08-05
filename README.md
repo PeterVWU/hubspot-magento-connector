@@ -15,6 +15,30 @@ with `grand_total` strictly greater than `CUSTOMER_MIN_ORDER_TOTAL`. Other
 eligible customer groups can sync without the order-total gate. Fraud customers
 remain excluded.
 
+### Sales-rep ownership
+
+Magento sales reps can be mapped to HubSpot owners in
+`src/config/salesrep-mapping.js`. A mapped rep becomes the owner of the synced
+HubSpot contact and deal. When a Magento rep has no HubSpot mapping, the records
+still sync and their HubSpot owner is left unchanged.
+
+HubSpot contact ownership is also synchronized back to Magento. Normally, an
+unowned HubSpot contact clears the corresponding Magento customer sales-rep
+assignment. `OWNER_REVERSE_PROTECTED_SALESREP_IDS` provides exceptions to this
+rule: if the Magento customer is currently assigned to one of these reps,
+HubSpot owner changes cannot overwrite or clear that assignment.
+
+Magento sales-rep ID `175` (Anissa, `anissa@vapeguysinc.com`) is protected by
+default. To add more protected reps, provide a comma-separated list and retain
+the existing IDs:
+
+```env
+OWNER_REVERSE_PROTECTED_SALESREP_IDS=175,200,201
+```
+
+This setting only blocks HubSpot-to-Magento ownership updates. It does not
+exclude the protected reps' customers or orders from forward synchronization.
+
 ## Requirements
 
 - Node.js 18+
@@ -36,6 +60,7 @@ DATABASE_URL=postgresql://hubspot_sync:changeme@localhost:5433/hubspot_sync
 SYNC_INTERVAL_MINUTES=5       # How often to poll (default: 5)
 SYNC_START_DATE=2024-01-01    # Only sync records updated after this date
 EXCLUDED_SALESREP_IDS=1,2,3   # Comma-separated Magento sales rep IDs to exclude
+OWNER_REVERSE_PROTECTED_SALESREP_IDS=175 # Comma-separated Magento assignments HubSpot must not overwrite (default: 175)
 CUSTOMER_MIN_ORDER_TOTAL=500  # Strict grand_total threshold for customer/order sync
 MAGENTO_PAGE_SIZE=100         # Magento API page size (default: 100)
 HUBSPOT_BATCH_SIZE=100        # HubSpot batch upsert size (default: 100)

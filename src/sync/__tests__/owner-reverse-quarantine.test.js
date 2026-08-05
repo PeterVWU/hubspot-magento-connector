@@ -17,6 +17,10 @@ vi.mock('../../api/magento.js', () => ({
   updateCustomerSalesrep: mockUpdateCustomerSalesrep,
 }));
 
+vi.mock('../../config/index.js', () => ({
+  config: { sync: { ownerReverseProtectedSalesrepIds: ['175'] } },
+}));
+
 vi.mock('../../utils/logger.js', () => ({
   default: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -56,6 +60,20 @@ describe('processOwnerReverseQuarantine', () => {
     expect(mockQuarantine).not.toHaveBeenCalled();
     expect(result.recovered).toBe(1);
     expect(result.stillFailing).toBe(0);
+  });
+
+  it('removes a stale retry without updating a protected Magento salesrep', async () => {
+    mockGetDue.mockResolvedValueOnce([dueRow]);
+    mockGetCustomerById.mockResolvedValueOnce({
+      id: 500,
+      custom_attributes: [{ attribute_code: 'salesrep_rep_id', value: '175' }],
+    });
+
+    const result = await processOwnerReverseQuarantine('run-protected');
+
+    expect(mockUpdateCustomerSalesrep).not.toHaveBeenCalled();
+    expect(mockRemoveQ).toHaveBeenCalledWith('hs-1', '500');
+    expect(result).toEqual({ retried: 1, recovered: 0, stillFailing: 0 });
   });
 
   it('re-quarantines (bumps attempts/backoff) when the retry still 400s', async () => {

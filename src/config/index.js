@@ -41,6 +41,9 @@ export const config = {
     excludedSalesrepIds: process.env.EXCLUDED_SALESREP_IDS
       ? process.env.EXCLUDED_SALESREP_IDS.split(',').map(id => id.trim()).filter(Boolean)
       : [],
+    ownerReverseProtectedSalesrepIds: process.env.OWNER_REVERSE_PROTECTED_SALESREP_IDS
+      ? process.env.OWNER_REVERSE_PROTECTED_SALESREP_IDS.split(',').map(id => id.trim()).filter(Boolean)
+      : ['175'],
   },
   log: {
     level: process.env.LOG_LEVEL || 'info',

@@ -3,6 +3,7 @@ import * as hubspot from '../api/hubspot.js';
 import * as db from '../db/sync-state.js';
 import { OWNER_SALESREP_MAP } from '../config/salesrep-mapping.js';
 import { config } from '../config/index.js';
+import { isOwnerReverseProtected } from './owner-reverse-protection.js';
 import logger from '../utils/logger.js';
 
 let ownerReverseInProgress = false;
@@ -33,6 +34,15 @@ async function updateScopeIfNeeded(magentoCustomerId, targetSalesrepId, context)
   }
   const currentSalesrep = (existing.custom_attributes || [])
     .find(a => a.attribute_code === 'salesrep_rep_id')?.value;
+
+  if (isOwnerReverseProtected(existing)) {
+    logger.info('Skipping owner reverse sync for protected Magento salesrep', {
+      ...context,
+      magentoId: magentoCustomerId,
+      currentSalesrep,
+    });
+    return 'skipped';
+  }
 
   const normalize = (v) => { const s = String(v ?? ''); return s === '' ? '0' : s; };
   if (normalize(currentSalesrep) === normalize(targetSalesrepId)) {

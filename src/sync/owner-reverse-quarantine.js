@@ -1,6 +1,7 @@
 import * as magento from '../api/magento.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
+import { isOwnerReverseProtected } from './owner-reverse-protection.js';
 
 /**
  * Re-attempts owner-reverse updates that previously failed Magento validation
@@ -22,6 +23,15 @@ export async function processOwnerReverseQuarantine(runId) {
   for (const item of items) {
     try {
       const existing = await magento.getCustomerById(item.magento_id);
+      if (isOwnerReverseProtected(existing)) {
+        await db.removeQuarantinedOwnerReverse(item.hubspot_id, item.magento_id);
+        logger.info('Removing quarantined owner update for protected Magento salesrep', {
+          hubspotId: item.hubspot_id,
+          magentoId: item.magento_id,
+          runId,
+        });
+        continue;
+      }
       await magento.updateCustomerSalesrep(item.magento_id, item.target_salesrep_id, existing);
       await db.removeQuarantinedOwnerReverse(item.hubspot_id, item.magento_id);
       recovered++;

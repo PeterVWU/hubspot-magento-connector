@@ -36,7 +36,7 @@ vi.mock('../../config/salesrep-mapping.js', () => ({
 }));
 
 vi.mock('../../config/index.js', () => ({
-  config: { sync: { ownerReverseBatchSize: 500 } },
+  config: { sync: { ownerReverseBatchSize: 500, ownerReverseProtectedSalesrepIds: ['175'] } },
 }));
 
 vi.mock('../../utils/logger.js', () => ({
@@ -101,6 +101,23 @@ describe('syncOwnersReverse – multi-scope customers', () => {
 
     expect(mockUpdateCustomerSalesrep).toHaveBeenCalledTimes(1);
     expect(result.updated).toBe(1);
+    expect(result.skipped).toBe(1);
+  });
+
+  it('never overwrites a customer assigned to a protected Magento salesrep', async () => {
+    mockSearchContactsModifiedSince.mockResolvedValueOnce({ contacts: [
+      makeContact('hs-protected', 'owner-1', 'anissa@vapeguysinc.com'),
+    ], hasMore: false });
+    mockGetMagentoIdsByHubspotId.mockResolvedValueOnce(['1750']);
+    mockGetCustomerById.mockResolvedValueOnce({
+      id: 1750,
+      custom_attributes: [{ attribute_code: 'salesrep_rep_id', value: '175' }],
+    });
+
+    const result = await syncOwnersReverse(since, 'run-protected');
+
+    expect(mockUpdateCustomerSalesrep).not.toHaveBeenCalled();
+    expect(result.updated).toBe(0);
     expect(result.skipped).toBe(1);
   });
 

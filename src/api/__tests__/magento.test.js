@@ -22,7 +22,7 @@ axios.create.mockReturnValue({
   put: vi.fn(),
 });
 
-const { getOrdersUpdatedSince, getQualifyingOrdersByCustomerId, getCustomersUpdatedSince } = await import('../magento.js');
+const { getOrdersUpdatedSince, getCustomersUpdatedSince } = await import('../magento.js');
 
 describe('fetchAllPages – pagination loop guards', () => {
   beforeEach(() => mockGet.mockReset());
@@ -68,15 +68,14 @@ describe('fetchAllPages – pagination loop guards', () => {
       { entity_id: 1, updated_at: '2024-01-01T01:00:00Z', custom_attributes: [{ attribute_code: 'salesrep_rep_id', value: '24' }] },
       { entity_id: 2, updated_at: '2024-01-01T02:00:00Z', custom_attributes: [] },
     ];
-    mockGet.mockResolvedValueOnce({ data: { items, total_count: 2 } });
+    mockGet.mockResolvedValueOnce({ data: { items, total_count: items.length } });
 
     const result = await getCustomersUpdatedSince(new Date('2024-01-01T00:00:00Z'));
 
     const url = decodeURIComponent(mockGet.mock.calls[0][0]);
     expect(url).toContain('searchCriteria[filterGroups][1][filters][0][field]=group_id');
     expect(url).toContain('searchCriteria[filterGroups][1][filters][0][conditionType]=nin');
-    expect(url).toContain('searchCriteria[filterGroups][1][filters][0][value]=0,5,61,62,64');
-    expect(url).not.toContain('searchCriteria[filterGroups][1][filters][0][value]=0,1,5,61,62,64');
+    expect(url).toContain('searchCriteria[filterGroups][1][filters][0][value]=0,1,5,61,62,64');
 
     // Server-side filter: salesrep_rep_id NIN excluded list, OR is null
     expect(url).toContain('searchCriteria[filterGroups][2][filters][0][field]=salesrep_rep_id');
@@ -90,12 +89,13 @@ describe('fetchAllPages – pagination loop guards', () => {
     expect(result.customers).toHaveLength(2);
   });
 
-  it('filters blocked customer groups client-side while allowing group 1 through', async () => {
+  it('filters blocked customer groups including group 1 client-side', async () => {
     const items = [
-      { entity_id: 1, group_id: 1, updated_at: '2024-01-01T01:00:00Z', custom_attributes: [] },
+      { entity_id: 1, group_id: 65, updated_at: '2024-01-01T01:00:00Z', custom_attributes: [] },
+      { entity_id: 3, group_id: 1, updated_at: '2024-01-01T01:30:00Z', custom_attributes: [] },
       { entity_id: 2, group_id: 61, updated_at: '2024-01-01T02:00:00Z', custom_attributes: [] },
     ];
-    mockGet.mockResolvedValueOnce({ data: { items, total_count: 2 } });
+    mockGet.mockResolvedValueOnce({ data: { items, total_count: items.length } });
 
     const result = await getCustomersUpdatedSince(new Date('2024-01-01T00:00:00Z'));
 
@@ -103,20 +103,4 @@ describe('fetchAllPages – pagination loop guards', () => {
     expect(result.lastRawUpdatedAt).toEqual(new Date('2024-01-01T02:00:00Z'));
   });
 
-  it('builds a customer qualifying-order lookup using grand_total gt min total', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { items: [{ entity_id: 1, customer_id: 200, grand_total: 501 }], total_count: 1 },
-    });
-
-    const orders = await getQualifyingOrdersByCustomerId(200, 500, 1);
-
-    expect(orders).toHaveLength(1);
-    const url = mockGet.mock.calls[0][0];
-    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][0][filters][0][field]=customer_id');
-    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][0][filters][0][conditionType]=eq');
-    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][1][filters][0][field]=grand_total');
-    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][1][filters][0][conditionType]=gt');
-    expect(decodeURIComponent(url)).toContain('searchCriteria[filterGroups][1][filters][0][value]=500');
-    expect(decodeURIComponent(url)).toContain('searchCriteria[pageSize]=1');
-  });
 });

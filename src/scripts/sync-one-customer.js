@@ -9,7 +9,7 @@ import pool from '../db/index.js';
 import * as magento from '../api/magento.js';
 import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
-import { isEligibleCustomer, isQualifyingOrder, requiresQualifyingOrderForCustomer } from '../sync/eligibility.js';
+import { isEligibleCustomer } from '../sync/eligibility.js';
 import logger from '../utils/logger.js';
 
 const customerId = process.argv[2];
@@ -35,21 +35,14 @@ async function run() {
 
   logger.info(`Fetching orders for customer ${customerId}...`);
   const orders = await magento.getOrdersByCustomerId(customerId);
-  const qualifyingOrders = orders.filter(isQualifyingOrder);
-  logger.info(`Found ${orders.length} orders, ${qualifyingOrders.length} qualifying`);
-
-  if (requiresQualifyingOrderForCustomer(customer) && !qualifyingOrders.length) {
-    logger.info(`Customer ${customerId} has no qualifying orders; nothing to sync`);
-    await pool.end();
-    return;
-  }
+  logger.info(`Found ${orders.length} orders`);
 
   let created = 0;
   let updated = 0;
   let failed = 0;
   let contactHubspotId = null;
 
-  for (const order of qualifyingOrders) {
+  for (const order of orders) {
     try {
       const existed = await db.getHubspotId('order', order.entity_id);
       const result = await syncSingleOrder(order, 'manual', null, customer);

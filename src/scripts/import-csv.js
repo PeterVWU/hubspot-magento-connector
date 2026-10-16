@@ -14,7 +14,7 @@ import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
 import * as db from '../db/sync-state.js';
 import { syncSingleOrder } from '../sync/orders.js';
-import { isEligibleCustomer, isQualifyingOrder, requiresQualifyingOrderForCustomer } from '../sync/eligibility.js';
+import { isEligibleCustomer } from '../sync/eligibility.js';
 import logger from '../utils/logger.js';
 
 const CUSTOMERS_PREFIX = 'data/customers';
@@ -63,7 +63,7 @@ function customerFromCsvRow(row) {
   };
 }
 
-async function importCustomers(rows, qualifyingCustomerIds) {
+async function importCustomers(rows) {
   let created = 0, updated = 0, skipped = 0, failed = 0;
   const total = rows.length;
   let i = 0;
@@ -79,10 +79,7 @@ async function importCustomers(rows, qualifyingCustomerIds) {
     try {
       const customer = customerFromCsvRow(row);
 
-      if (
-        !isEligibleCustomer(customer)
-        || (requiresQualifyingOrderForCustomer(customer) && !qualifyingCustomerIds.has(String(row.entity_id)))
-      ) {
+      if (!isEligibleCustomer(customer)) {
         skipped++;
         progress('Customers', i, total, { created, updated, skipped, failed });
         continue;
@@ -205,15 +202,8 @@ async function run() {
   logger.info(`Loaded: ${customerRows.length} customers, ${orderRows.length} orders, ${itemRows.length} order items`);
 
   const customersById = new Map(customerRows.map(row => [String(row.entity_id), customerFromCsvRow(row)]));
-  const qualifyingCustomerIds = new Set();
-  for (const row of orderRows) {
-    if (row.customer_id && isQualifyingOrder(row)) {
-      qualifyingCustomerIds.add(String(row.customer_id));
-    }
-  }
-
   logger.info('--- Importing customers ---');
-  const custStats = await importCustomers(customerRows, qualifyingCustomerIds);
+  const custStats = await importCustomers(customerRows);
   logger.info('Customer import complete', custStats);
 
   // Build customer_id → hubspot_owner_id map for order assignment

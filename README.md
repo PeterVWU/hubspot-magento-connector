@@ -9,11 +9,15 @@ A Node.js background service that syncs data from a Magento 2 store to HubSpot C
 - **Orders** (Magento orders -> HubSpot deals with line items and contact associations)
 
 Sync runs in dependency order: products first, then customers, then orders.
-Customer groups `0`, `5`, `61`, `62`, and `64` are excluded. Customer group
-`1` is only pushed to HubSpot when the customer has at least one Magento order
-with `grand_total` strictly greater than `CUSTOMER_MIN_ORDER_TOTAL`. Other
-eligible customer groups can sync without the order-total gate. Fraud customers
-remain excluded.
+Customer groups `0`, `1`, `5`, `61`, `62`, and `64` are excluded, including
+orders belonging to those customers. Other eligible customer groups sync without
+an order-total requirement. Fraud customers remain excluded.
+
+These eligibility rules apply to scheduled syncs, queued retries, CSV imports,
+and the single-customer sync script. Group `1` is blocked regardless of order
+value. The former $500 minimum-order rule has been removed, and
+`CUSTOMER_MIN_ORDER_TOTAL` is no longer used. Existing HubSpot contacts and deals
+are not deleted when their Magento customer becomes ineligible.
 
 ### Sales-rep ownership
 
@@ -61,7 +65,6 @@ SYNC_INTERVAL_MINUTES=5       # How often to poll (default: 5)
 SYNC_START_DATE=2024-01-01    # Only sync records updated after this date
 EXCLUDED_SALESREP_IDS=1,2,3   # Comma-separated Magento sales rep IDs to exclude
 OWNER_REVERSE_PROTECTED_SALESREP_IDS=175 # Comma-separated Magento assignments HubSpot must not overwrite (default: 175)
-CUSTOMER_MIN_ORDER_TOTAL=500  # Strict grand_total threshold for customer/order sync
 MAGENTO_PAGE_SIZE=100         # Magento API page size (default: 100)
 HUBSPOT_BATCH_SIZE=100        # HubSpot batch upsert size (default: 100)
 MAX_RECORDS_PER_SYNC=0        # Max records per entity per cycle, 0=unlimited (default: 0)
@@ -113,12 +116,11 @@ WHERE entity_type = 'customer';
 ```
 
 The next sync will page through Magento customers, exclude blocked groups
-`0`, `5`, `61`, `62`, and `64`, keep group `1` subject to the
-`CUSTOMER_MIN_ORDER_TOTAL` rule, and create or update matching HubSpot contacts
+`0`, `1`, `5`, `61`, `62`, and `64`, and create or update matching HubSpot contacts
 for all other eligible groups. If `MAX_RECORDS_PER_SYNC` is set, the backfill
 continues across multiple sync cycles.
 
-Reset the `order` cursor as well only when historical qualifying orders/deals
+Reset the `order` cursor as well only when historical eligible orders/deals
 also need to be imported.
 
 ## Project structure

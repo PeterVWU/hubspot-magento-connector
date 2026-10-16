@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockGetCustomersUpdatedSince = vi.fn();
-const mockGetQualifyingOrdersByCustomerId = vi.fn();
 vi.mock('../../api/magento.js', () => ({
   getCustomersUpdatedSince: mockGetCustomersUpdatedSince,
-  getQualifyingOrdersByCustomerId: mockGetQualifyingOrdersByCustomerId,
 }));
 
 const mockSearchContacts = vi.fn();
@@ -30,7 +28,6 @@ vi.mock('../../db/sync-state.js', () => ({
 vi.mock('../../config/index.js', () => ({
   config: {
     sync: {
-      customerMinOrderTotal: 500,
       excludedSalesrepIds: [],
     },
   },
@@ -66,12 +63,11 @@ describe('syncCustomers qualification gate', () => {
     mockLogSync.mockResolvedValue();
   });
 
-  it('skips customers that do not have a qualifying historical order', async () => {
+  it('skips group 1 customers before any HubSpot writes', async () => {
     mockGetCustomersUpdatedSince.mockResolvedValueOnce({
       customers: [customer(1)],
       lastRawUpdatedAt: new Date('2024-01-01T00:01:00Z'),
     });
-    mockGetQualifyingOrdersByCustomerId.mockResolvedValueOnce([]);
 
     const result = await syncCustomers(since, 'run-1');
 
@@ -82,24 +78,7 @@ describe('syncCustomers qualification gate', () => {
     expect(mockGetHubspotId).not.toHaveBeenCalled();
   });
 
-  it('creates a contact only when the customer has a qualifying order', async () => {
-    mockGetCustomersUpdatedSince.mockResolvedValueOnce({
-      customers: [customer(2)],
-      lastRawUpdatedAt: new Date('2024-01-01T00:02:00Z'),
-    });
-    mockGetQualifyingOrdersByCustomerId.mockResolvedValueOnce([{ entity_id: 10, grand_total: '501.00' }]);
-    mockGetHubspotId.mockResolvedValueOnce(null);
-    mockSearchContacts.mockResolvedValueOnce(null);
-    mockCreateContact.mockResolvedValueOnce({ id: 'hs-contact-2' });
-
-    const result = await syncCustomers(since, 'run-2');
-
-    expect(result.created).toBe(1);
-    expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ email: '2@test.com' }));
-    expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 2, 'hs-contact-2');
-  });
-
-  it('creates a non-group-1 contact without checking for a qualifying order', async () => {
+  it('creates an eligible contact without checking order totals', async () => {
     mockGetCustomersUpdatedSince.mockResolvedValueOnce({
       customers: [{ ...customer(4), group_id: 65 }],
       lastRawUpdatedAt: new Date('2024-01-01T00:04:00Z'),
@@ -111,7 +90,6 @@ describe('syncCustomers qualification gate', () => {
     const result = await syncCustomers(since, 'run-4');
 
     expect(result.created).toBe(1);
-    expect(mockGetQualifyingOrdersByCustomerId).not.toHaveBeenCalled();
     expect(mockCreateContact).toHaveBeenCalledWith(expect.objectContaining({ email: '4@test.com' }));
     expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 4, 'hs-contact-4');
   });
@@ -123,7 +101,6 @@ describe('syncCustomers qualification gate', () => {
       customers: [customer(3)],
       lastRawUpdatedAt: rawHighWater,
     });
-    mockGetQualifyingOrdersByCustomerId.mockResolvedValueOnce([]);
 
     const result = await syncCustomers(since, 'run-3');
 

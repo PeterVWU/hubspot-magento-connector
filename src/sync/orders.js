@@ -3,9 +3,8 @@ import * as hubspot from '../api/hubspot.js';
 import { mapOrderToDeal, mapOrderItemToLineItem, getOrderItemsForSync } from '../mappers/order.mapper.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
 import { SALESREP_OWNER_MAP } from '../config/salesrep-mapping.js';
-import { config } from '../config/index.js';
 import * as db from '../db/sync-state.js';
-import { getCustomerSalesrepId, isEligibleCustomer, isQualifyingOrder, requiresQualifyingOrderForCustomer } from './eligibility.js';
+import { getCustomerSalesrepId, isEligibleCustomer } from './eligibility.js';
 import logger from '../utils/logger.js';
 
 let pipelineId = null;
@@ -92,11 +91,11 @@ async function resolveOrCreateContact(order, customer, runId) {
       try {
         await hubspot.updateContact(existingHubspotId, properties);
       } catch (err) {
-        logger.warn('Could not update mapped contact from qualifying order', {
+        logger.warn('Could not update mapped contact from order', {
           customerId: order.customer_id, hubspotId: existingHubspotId, error: err.message, runId,
         });
       }
-      logger.debug('Resolved mapped contact for qualifying order', {
+      logger.debug('Resolved mapped contact for order', {
         customerId: order.customer_id, hubspotId: existingHubspotId, runId,
       });
       return existingHubspotId;
@@ -108,7 +107,7 @@ async function resolveOrCreateContact(order, customer, runId) {
       try {
         await hubspot.updateContact(existing.id, properties);
       } catch (err) {
-        logger.warn('Could not update existing contact from qualifying order', {
+        logger.warn('Could not update existing contact from order', {
           customerId: order.customer_id, hubspotId: existing.id, error: err.message, runId,
         });
       }
@@ -148,17 +147,6 @@ export async function syncSingleOrder(order, runId, ownerId = null, customerOver
       runId,
     });
     return { skipped: true, reason: 'ineligible_customer' };
-  }
-
-  if (requiresQualifyingOrderForCustomer(customer) && !isQualifyingOrder(order)) {
-    logger.debug('Skipping group 1 order below customer sync threshold', {
-      orderId: order.increment_id,
-      customerId: order.customer_id,
-      grandTotal: order.grand_total,
-      minOrderTotal: config.sync.customerMinOrderTotal,
-      runId,
-    });
-    return { skipped: true, reason: 'order_total_below_threshold' };
   }
 
   await ensurePipeline();

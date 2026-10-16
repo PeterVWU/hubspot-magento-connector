@@ -189,19 +189,6 @@ export async function getOrdersByCustomerId(customerId) {
   return fetchAllPages('/orders', filters, 'orders', 0);
 }
 
-export async function getQualifyingOrdersByCustomerId(customerId, minTotal, limit = 1) {
-  const filters = [
-    { field: 'customer_id', value: String(customerId), condition: 'eq', group: 0, filterIdx: 0 },
-    { field: 'grand_total', value: String(minTotal), condition: 'gt', group: 1, filterIdx: 0 },
-  ];
-  const query = buildSearchCriteria(filters, limit, 1);
-  const { data } = await withTimeout(
-    (signal) => client.get(`/orders?${query}`, { signal }),
-    config.magento.timeout,
-  );
-  return data.items || [];
-}
-
 export async function getOrderById(orderId) {
   logger.debug('Fetching single order', { orderId });
   const { data } = await withTimeout(

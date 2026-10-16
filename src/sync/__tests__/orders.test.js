@@ -46,7 +46,6 @@ vi.mock('../../db/sync-state.js', () => ({
 vi.mock('../../config/index.js', () => ({
   config: {
     sync: {
-      customerMinOrderTotal: 500,
       excludedSalesrepIds: [],
     },
   },
@@ -81,7 +80,7 @@ function customer(overrides = {}) {
     email: 'customer@test.com',
     firstname: 'Test',
     lastname: 'Customer',
-    group_id: 1,
+    group_id: 65,
     custom_attributes: [],
     ...overrides,
   };
@@ -99,19 +98,21 @@ describe('syncSingleOrder qualification gate', () => {
     mockBatchCreateAssociations.mockResolvedValue([]);
   });
 
-  it('skips group 1 orders at or below the threshold before any HubSpot or DB writes', async () => {
+  it.each(['99.00', '500.00', '501.00', '10000.00'])('skips group 1 orders totaling %s before any HubSpot or DB writes', async (grandTotal) => {
     mockGetCustomerById.mockResolvedValueOnce(customer({ group_id: 1 }));
 
-    const result = await syncSingleOrder(order({ grand_total: '500.00' }), 'run-1');
+    const result = await syncSingleOrder(order({ grand_total: grandTotal }), 'run-1');
 
-    expect(result).toEqual({ skipped: true, reason: 'order_total_below_threshold' });
+    expect(result).toEqual({ skipped: true, reason: 'ineligible_customer' });
     expect(mockGetCustomerById).toHaveBeenCalledWith(200);
     expect(mockGetDealPipelines).not.toHaveBeenCalled();
     expect(mockGetHubspotId).not.toHaveBeenCalled();
     expect(mockCreateDeal).not.toHaveBeenCalled();
+    expect(mockCreateContact).not.toHaveBeenCalled();
+    expect(mockUpdateContact).not.toHaveBeenCalled();
   });
 
-  it('skips qualifying orders for fraud customers before HubSpot writes', async () => {
+  it('skips orders for blocked customers before HubSpot writes', async () => {
     mockGetCustomerById.mockResolvedValueOnce(customer({ group_id: 5 }));
 
     const result = await syncSingleOrder(order(), 'run-2');
@@ -121,7 +122,7 @@ describe('syncSingleOrder qualification gate', () => {
     expect(mockCreateDeal).not.toHaveBeenCalled();
   });
 
-  it('creates deal and contact for a qualifying order from an eligible customer', async () => {
+  it('creates deal and contact for an order from an eligible customer', async () => {
     mockGetCustomerById.mockResolvedValueOnce(customer());
     mockGetHubspotId
       .mockResolvedValueOnce(null)
@@ -142,7 +143,7 @@ describe('syncSingleOrder qualification gate', () => {
     expect(mockUpsertMapping).toHaveBeenCalledWith('customer', 200, 'hs-contact-1');
   });
 
-  it('creates deal and contact for a below-threshold order from an eligible non-group-1 customer', async () => {
+  it('creates deal and contact for a small order from an eligible customer', async () => {
     mockGetCustomerById.mockResolvedValueOnce(customer({ group_id: 65 }));
     mockGetHubspotId
       .mockResolvedValueOnce(null)

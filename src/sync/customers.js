@@ -1,19 +1,9 @@
 import * as magento from '../api/magento.js';
 import * as hubspot from '../api/hubspot.js';
 import { mapCustomerToContact } from '../mappers/customer.mapper.js';
-import { requiresQualifyingOrderForCustomer } from './eligibility.js';
-import { config } from '../config/index.js';
+import { isEligibleCustomer } from './eligibility.js';
 import * as db from '../db/sync-state.js';
 import logger from '../utils/logger.js';
-
-async function customerHasQualifyingOrder(customerId) {
-  const orders = await magento.getQualifyingOrdersByCustomerId(
-    customerId,
-    config.sync.customerMinOrderTotal,
-    1,
-  );
-  return orders.length > 0;
-}
 
 export async function syncCustomers(since, runId) {
   logger.info('Starting customer sync', { since: since.toISOString(), runId });
@@ -28,21 +18,15 @@ export async function syncCustomers(since, runId) {
 
   for (const customer of customers) {
     try {
+      if (!isEligibleCustomer(customer)) {
+        skipped++;
+        continue;
+      }
+
       const properties = mapCustomerToContact(customer);
       if (!properties.email) {
         skipped++;
         logger.warn('Skipping customer without email', { magentoId: customer.id, runId });
-        continue;
-      }
-
-      if (requiresQualifyingOrderForCustomer(customer) && !(await customerHasQualifyingOrder(customer.id))) {
-        skipped++;
-        logger.debug('Skipping customer without qualifying order', {
-          magentoId: customer.id,
-          groupId: customer.group_id,
-          minOrderTotal: config.sync.customerMinOrderTotal,
-          runId,
-        });
         continue;
       }
 

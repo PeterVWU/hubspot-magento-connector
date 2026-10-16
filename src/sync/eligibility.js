@@ -1,6 +1,6 @@
 import { config } from '../config/index.js';
 
-export const BLOCKED_CUSTOMER_GROUP_IDS = ['0', '5', '61', '62', '64'];
+export const BLOCKED_CUSTOMER_GROUP_IDS = ['0', '1', '5', '61', '62', '64'];
 
 export function getCustomerSalesrepId(customer) {
   return (customer.custom_attributes || [])
@@ -23,12 +23,4 @@ export function isEligibleCustomer(customer) {
   }
 
   return true;
-}
-
-export function requiresQualifyingOrderForCustomer(customer) {
-  return String(customer?.group_id) === '1';
-}
-
-export function isQualifyingOrder(order) {
-  return Number(order?.grand_total) > config.sync.customerMinOrderTotal;
 }
